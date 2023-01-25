@@ -292,7 +292,7 @@ static void start_run(void) {
 
 
 #include <sys/shm.h>
-#include "../../config.h"
+#include "../AFL/config.h"
 
 /***************************
  * VARIOUS AUXILIARY STUFF *

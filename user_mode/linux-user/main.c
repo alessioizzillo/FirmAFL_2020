@@ -5883,6 +5883,8 @@ target_ulong target_end = 0x7fffffff;
 
 int main(int argc, char **argv, char **envp)
 {
+    char *env_var = getenv("FUZZ");
+    if (env_var && !strcmp(env_var, "1")){
 #ifdef MEM_MAPPING
     cross_process_mutex_first_init(); //zyw
 
@@ -5905,6 +5907,7 @@ int main(int argc, char **argv, char **envp)
     FirmAFL_config();
     init_config();
 #endif
+    }
     
     struct target_pt_regs regs1, *regs = &regs1;
     struct image_info info1, *info = &info1;

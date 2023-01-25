@@ -1,83 +1,124 @@
+#!/usr/bin/env python3
 import sys
 import os
+import pdb
+from pathlib import Path
+
 
 firm_id = sys.argv[1]
 firm_arch = sys.argv[2]
-firm_dir = "image"+firm_id
+firm_dir = "FirmAE/scratch/"+firm_id
+feed_type = "http"
 
-'''
-cmd = "python generate_run_firmafl.py %s %s" %(firm_id, firm_arch)
-os.system(cmd)
-sys_run_src = "firmadyne/scratch/%s/run_firmafl.sh" %(firm_id)
-'''
-sys_run_src = "FirmAFL_config/%s/run.sh" %(firm_id)
-user_run_src = "FirmAFL_config/%s/user.sh" %firm_id
-if "mips" in firm_arch:
-	sys_src = "qemu_mode/DECAF_qemu_2.10/%s-softmmu/qemu-system-%s" %(firm_arch, firm_arch)
-	user_src = "user_mode/%s-linux-user/qemu-%s" %(firm_arch, firm_arch)
+
+def config_creation(feed_type):
+	fuzz = open("FirmAE/scratch/"+firm_id+"/fuzz_line", "w")
+	fuzz.write("./afl-fuzz -m none -t 800000+ -Q -i inputs -o outputs -x keywords ") 
+	fuzz.close()
+	print("\033[32m[+]\033[0m Default Fuzz Call: ./afl-fuzz -m none -t 800000+ -Q -i inputs -o outputs -x keywords")
+	print("\033[32m[+]\033[0m Default Keywords file placed in "+firm_dir+"/keywords")
+	print("\033[32m[+]\033[0m Default Seed file placed in "+firm_dir+"/inputs/seed")
+
+	f = open("FirmAE/scratch/"+firm_id+"/FirmAFL_config", "w")
+	f.write("mapping_filename=mapping_table\n") 
+	f.write("init_read_pipename=user_cpu_state\n") 
+	f.write("write_pipename=full_cpu_state\n") 
+
+	# Web Service of the firmware
+	path = Path("FirmAE/scratch/"+firm_id+"/service")
+	if (path.is_file()):
+		file_web = open("FirmAE/scratch/"+firm_id+"/service", "r+")
+		web_service = file_web.read()
+		file_web.close()
+		f.write("program_analysis="+web_service.split("/")[-1]+"\n")
+	
+		# Extract target program and lib directory
+		os.system("tar -xvf FirmAE/images/%s.tar.gz .%s" % (firm_id, web_service))
+		os.system("mv %s %s" % (web_service.split("/")[1], firm_dir))
+		os.system("tar -xvf FirmAE/images/%s.tar.gz ./lib" % (firm_id))
+		os.system("mv ./lib %s" % (firm_dir))
+
+		print("\033[32m[+]\033[0m Program Analysis: "+web_service+" (web service)")
+	else:
+		f.write("program_analysis=NotRecognized!!\n")
+		print("\033[31m[-]\033[0m Program Analysis: Not Recognized! Set it manually or use later option.")
+	
+	f.write("feed_type=FEED_HTTP\n")
+	f.write("id=%s\n"%firm_id)
+	f.write("opti=yes")
+	
+	f.close()	
+
+	return
+
+
+def chroot_creation(cmd):
+	cmd.append("mkdir -p %s/bin" % firm_dir)
+	cmd.append("mkdir -p %s/lib" % firm_dir)
+	cmd.append("mkdir -p %s/lib64" % firm_dir)
+	cmd.append("cp -v /bin/bash %s/bin" % firm_dir)
+	cmd.append("list=\"$(ldd /bin/bash | egrep -o '/lib.*\.[0-9]')\" && for i in $list; do cp -v --parents \"$i\" \"%s\"; done" % firm_dir)
+
+
+cmd = []
+dst = "FirmAE/scratch/%s/" %firm_id
+dst_input = "FirmAE/scratch/%s/inputs/" %firm_id
+
+# Executables QEMU system mode and user mode
+if "mipseb" in firm_arch:   
+	sys_src = "qemu_mode/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips"
+	user_src = "user_mode/mips-linux-user/qemu-mips"
+	kernel_src = "FirmAE/binaries/vmlinux.mipseb_DECAF"
+elif "mipsel" in firm_arch:
+	sys_src = "qemu_mode/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel"
+	user_src = "user_mode/mipsel-linux-user/qemu-mipsel"
+	kernel_src = "FirmAE/binaries/vmlinux.mipsel_DECAF"
 else:
 	sys_src = "qemu_mode/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm"
 	user_src = "user_mode/arm-linux-user/qemu-arm" 
-config_src = "FirmAFL_config/%s/FirmAFL_config" %(firm_id)
-test_src = "FirmAFL_config/%s/test.py" %(firm_id)
-keywords_src = "FirmAFL_config/%s/keywords" %(firm_id)
-afl_src= "FirmAFL_config/afl-fuzz"
-firmadyne_src = "firmadyne/firmadyne.config"
-image_src = "firmadyne/scratch/%s/image.raw" %firm_id
-if "161161" in firm_id or "161160" in firm_id:
-	image_src = "firmadyne/scratch/16116/image.raw" 
-if "mips" in firm_arch:
-	kernel_src ="firmadyne_modify/vmlinux.%s_3.2.1" %firm_arch
-else:
-	kernel_src ="firmadyne_modify/zImage.armel"
-procinfo_src =  "FirmAFL_config/procinfo.ini"
-other_file1 =  "FirmAFL_config/efi-pcnet.rom"
-other_file2 =  "FirmAFL_config/vgabios-cirrus.bin"
-cmd_input = "mkdir image_%s/inputs" %firm_id
-seed_src = "FirmAFL_config/%s/seed" %(firm_id)
-start_src = "FirmAFL_config/start.py"
+	kernel_src = "FirmAE/binaries/zImage.armel_DECAF"
 
-dst = "image_%s/" %firm_id
-dst_input = "image_%s/inputs/" %firm_id
+# Fuzzing_Config_File Creation (Default FEED_HTTP for Web Server)
+config_creation(feed_type)
 
-cmd = []
-cmd.append("cp %s %s" %(sys_run_src, dst)) 
-cmd.append("cp %s %s" %(user_run_src, dst)) 
+# Default Keywords File (Dictionary for AFL)
+keywords_src = "FirmAFL_config/keywords"
+cmd.append("cp %s %s" %(keywords_src, dst))
+
+afl_src= "AFL/afl-fuzz"
+cmd.append("cp %s %s" %(afl_src, dst))
+
+# Configuration File to make DECAF_VMI works with our kernel
+procinfo_src =  "FirmAFL_config/procinfo.ini"  
+
+# Inputs Folder
+if not (os.path.isdir("FirmAE/scratch/"+firm_id+"/inputs")):
+	cmd_input = "mkdir FirmAE/scratch/%s/inputs" %firm_id   
+	cmd.append(cmd_input)
+
+# Seed File in Inputs/ folder
+seed_src = "FirmAFL_config/seed"  
+
+# VGABios binary
+vgabios_bin = "qemu_mode/DECAF_qemu_2.10/pc-bios/vgabios-cirrus.bin"  
+
+# EFI binary
+efi_bin =  "qemu_mode/DECAF_qemu_2.10/pc-bios/efi-e1000.rom"
+
+cmd.append("cp %s %s" %(seed_src, dst_input)) 
 cmd.append("cp %s %s" %(sys_src, dst)) 
 cmd.append("cp %s %safl-qemu-trace" %(user_src, dst)) 
-cmd.append("cp %s %s" %(config_src, dst)) 
-cmd.append("cp %s %s" %(test_src, dst)) 
-cmd.append("cp %s %s" %(keywords_src, dst)) 
-cmd.append("cp %s %s" %(afl_src, dst)) 
-cmd.append("cp %s %s" %(firmadyne_src, dst)) 
-cmd.append("cp %s %s" %(image_src, dst)) 
 cmd.append("cp %s %s" %(kernel_src, dst))
-cmd.append("cp %s %s" %(procinfo_src, dst)) 
-cmd.append("cp %s %s" %(other_file1, dst)) 
-cmd.append("cp %s %s" %(other_file2, dst)) 
-cmd.append(cmd_input)
-cmd.append("cp %s %s" %(seed_src, dst_input)) 
-cmd.append("cp %s %s" %(start_src, dst)) 
+cmd.append("cp %s %s" %(procinfo_src, dst))
+cmd.append("cp %s %s" %(vgabios_bin, dst))
+cmd.append("cp %s %s" %(efi_bin, dst))
+
+chroot_creation(cmd)
+
+# Soft link to /dev/null and /dev/urandom
+cmd.append("mkdir -p %s/dev" % firm_dir)
+cmd.append("mount --bind /dev %s/dev" % firm_dir)
 
 for i in range(0, len(cmd)):
 	os.system(cmd[i])
 
-
-if cmp(firm_id, "129780") == 0:
-	os.system("cp FirmAFL_config/missing_file/129780/net.conf image_129780/var/config/")
-	os.system("mkdir image_129780/var/run/")
-	os.system("cp FirmAFL_config/missing_file/129780/profile.ini image_129780/var/run/")
-	os.system("cp FirmAFL_config/missing_file/129780/video.ini image_129780/var/run/")
-elif cmp(firm_id, "129781") == 0:
-	os.system("cp FirmAFL_config/missing_file/129781/net.conf image_129781/var/config/")
-	os.system("cp FirmAFL_config/missing_file/129781/net.conf image_129781/var/config/net.conf_ori")
-elif cmp(firm_id, "10853") == 0:
-	os.system("mkdir image_10853/var/run/")
-	os.system("mkdir image_10853/var/etc/")
-	os.system("cp FirmAFL_config/missing_file/10853/nvram.conf image_10853/var/etc/")
-	os.system("cp FirmAFL_config/missing_file/10853/rc.pid image_10853/var/run/")
-	os.system("cp FirmAFL_config/missing_file/10853/httpd.pid image_10853/var/run/")
-elif cmp(firm_id, "161161") == 0:
-	os.system("mkdir image_161161/tmp/etc/")
-	os.system("cp FirmAFL_config/missing_file/161161/nvram.conf image_161161/tmp/etc/")
-	os.system("cp FirmAFL_config/missing_file/161161/nvram_default_counter image_161161/tmp/etc/")

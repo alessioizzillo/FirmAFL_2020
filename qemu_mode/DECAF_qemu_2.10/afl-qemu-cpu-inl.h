@@ -30,7 +30,7 @@
 
 
 #include <sys/shm.h>
-#include "../../config.h"
+#include "../../AFL/config.h"
 
 //FILE *file_log=NULL;
 //int iteration_times = 0;

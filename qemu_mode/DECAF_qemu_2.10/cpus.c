@@ -2246,6 +2246,8 @@ gotPipeNotification(void *ctx)
 
 void qemu_init_vcpu(CPUState *cpu)
 {
+    char *env_var = getenv("FUZZ");
+    if (env_var && !strcmp(env_var, "1")){
 #if defined(FUZZ) || defined(MEM_MAPPING) 
     FirmAFL_config();
 #endif
@@ -2268,7 +2270,7 @@ void qemu_init_vcpu(CPUState *cpu)
     }
     qemu_set_fd_handler(afl_qemuloop_pipe[0], gotPipeNotification, NULL, NULL);
 #endif
-
+    }
     cpu->nr_cores = smp_cores;
     cpu->nr_threads = smp_threads;
     cpu->stopped = true;

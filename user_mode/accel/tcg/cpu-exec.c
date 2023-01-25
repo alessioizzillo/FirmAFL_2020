@@ -702,6 +702,8 @@ int cpu_exec(CPUState *cpu)
         int tb_exit = 0;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
+        char *env_var = getenv("FUZZ");
+        if (env_var && !strcmp(env_var, "1")){
             CPUArchState *env = cpu->env_ptr;
 #ifdef TARGET_MIPS
             target_ulong pc = env->active_tc.PC;
@@ -840,6 +842,7 @@ int cpu_exec(CPUState *cpu)
                 gettimeofday(&lmbench_start, NULL);
             }
 #endif //lmbench
+        }
             /*   
             if(pc < 0x10000000)
             {

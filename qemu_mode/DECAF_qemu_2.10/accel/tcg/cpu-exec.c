@@ -2837,6 +2837,8 @@ exit:
         int tb_exit = 0;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
+        char *env_var = getenv("FUZZ");
+        if (env_var && !strcmp(env_var, "1")){
 skip_to_pos:
             assert(1==1);
 
@@ -3295,7 +3297,8 @@ skip_to_pos:
                 #endif
                 
             }
-#endif  
+#endif
+        }  
             /*
             if(afl_user_fork && into_syscall == 4005 && in_httpd)
             {
