@@ -23,17 +23,17 @@ def main():
 			firm_architecture = str(file.readline().rstrip())
 
 		if ("mipseb" in firm_architecture):
-			cmd.append("sudo cp afl/afl-fuzz "+ firm_dir+name+"/")
+			cmd.append("sudo cp AFL/afl-fuzz "+ firm_dir+name+"/")
 			cmd.append("sudo cp qemu_mode/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips "+ firm_dir+name+"/")
 			cmd.append("sudo cp user_mode/mips-linux-user/qemu-mips "+ firm_dir+name+"/afl-qemu-trace")
 
 		elif ("mipsel" in firm_architecture):
-			cmd.append("sudo cp afl/afl-fuzz "+ firm_dir+name+"/")
+			cmd.append("sudo cp AFL/afl-fuzz "+ firm_dir+name+"/")
 			cmd.append("sudo cp qemu_mode/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel "+ firm_dir+name+"/")
 			cmd.append("sudo cp user_mode/mipsel-linux-user/qemu-mipsel "+ firm_dir+name+"/afl-qemu-trace")
 
 		else:
-			cmd.append("sudo cp afl/afl-fuzz "+ firm_dir+name+"/")
+			cmd.append("sudo cp AFL/afl-fuzz "+ firm_dir+name+"/")
 			cmd.append("sudo cp qemu_mode/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm "+ firm_dir+name+"/")
 			cmd.append("sudo cp user_mode/arm-linux-user/qemu-arm "+ firm_dir+name+"/afl-qemu-trace")
 
