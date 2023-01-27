@@ -651,13 +651,28 @@ void get_input(CPUState * cpu)
         printf("content is:%s, len:%d\n", g2h(feed_addr), env->active_tc.gpr[2]);
         return;
         */
+
         total_len = getWork(recv_buf, 4096);
+
+        CPUArchState *env = cpu->env_ptr;
+        FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+        target_ulong pc = env->active_tc.PC;
+        target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+        target_ulong pc = env->pc;
+        target_ulong sp = env->regs[13];
+#endif
+        fprintf(fp, "USER-MODE: filled recv_buffer (pc: %lx, sp: %lx)\n", pc, sp);
+
         if(check_http_header(recv_buf) == 0)
         {
+            fprintf(fp, "USER-MODE: ERROR! invalid http_header. Exiting... (pc: %lx, sp: %lx)\n", pc, sp);
             //printf("recv_buf:%s\n", recv_buf);
             normal_exit(0);
         }
-        
+
+        fclose(fp);
     }
     else if (strcmp(feed_type, "FEED_CMD") == 0)
     {
@@ -821,6 +836,19 @@ void feed_input(CPUState * cpu)
                 memcpy(buf, recv_buf + buf_read_index, ret);
                 buf[ret] = '\0'; // impotant 106030
             }
+
+            FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+            target_ulong pc = env->active_tc.PC;
+            target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+            target_ulong pc = env->pc;
+            target_ulong sp = env->regs[13];
+#endif
+            fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
+                total_len, buf_read_index, rest_len, ret, pc, sp);
+            fclose(fp);
+
 
             if(MSG_PEEK == flag && (recv_syscall == 175 || recv_syscall == 176))
             {
@@ -3676,6 +3704,7 @@ void cpu_loop(CPUMIPSState *env)
     target_siginfo_t info;
     int trapnr;
     abi_long ret;
+    static int recv_counter = 0;
 # ifdef TARGET_ABI_MIPSO32
     unsigned int syscall_num;
 # endif
@@ -3822,6 +3851,20 @@ void cpu_loop(CPUMIPSState *env)
                     user_syscall_flag = 0;
                     env->active_tc.PC -= 4; //very important
                     //gettimeofday(&handle_state_start, NULL);
+
+
+                    FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+                    target_ulong pc = env->active_tc.PC;
+                    target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+                    target_ulong pc = env->pc;
+                    target_ulong sp = env->regs[13];
+#endif
+                    fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", syscall_num, pc, sp);
+                    fclose(fp);
+
+
                     //printf("time:%f, remote syscall:%d, arg:%x,%x,%x,%x\n",handle_state_start.tv_sec + handle_state_start.tv_usec/1000000.0, 
                         //syscall_num, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6]);
                     //printf("syscall:%d\n", syscall_num);

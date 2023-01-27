@@ -647,15 +647,27 @@ int feed_input(CPUState * cpu)
 #endif
         return 1;
         */
+
         total_len = getWork(recv_buf, 4096);
-        
-        
+
+        FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+        target_ulong pc = env->active_tc.PC;
+        target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+        target_ulong pc = env->pc;
+        target_ulong sp = env->regs[13];
+#endif
+        fprintf(fp, "SYSTEM-MODE: filled recv_buffer (pc: %lx, sp: %lx)\n", pc, sp);
+
         if(check_http_header(recv_buf) == 0)
         {
+            fprintf(fp, "USER-MODE: ERROR! invalid http_header (pc: %lx, sp: %lx)\n", pc, sp);
             //printf("recv_buf:%s\n", recv_buf);
             return 2;
         }
-        
+        fclose(fp);
+
         DECAF_printf("");
     }
     else if(strcmp(feed_type, "FEED_CMD") == 0)
@@ -2325,6 +2337,10 @@ int specify_fork_pc(CPUState *cpu)
 int start_fork(CPUState *cpu, target_ulong pc)
 {
 
+    FILE *fp= fopen("syscall_log","a+");
+    fprintf(fp, "START FORK!\n\n");
+    fclose(fp);
+
     CPUArchState * env = cpu->env_ptr;
 
 #if defined(FUZZ) || defined(MEM_MAPPING)
@@ -2541,6 +2557,18 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
         {
             final_recv_len  = rest_len;
         }
+
+        FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+        target_ulong pc = env->active_tc.PC;
+        target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+        target_ulong pc = env->pc;
+        target_ulong sp = env->regs[13];
+#endif
+        fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
+            total_len, buf_read_index, rest_len, final_recv_len, pc, sp);
+        fclose(fp);
 
         int tmp_addr = write_package(cpu, a1, recv_buf + buf_read_index, final_recv_len);
         DECAF_write_mem(cpu, tmp_addr, 1, "\0"); //important
@@ -3101,6 +3129,17 @@ skip_to_pos:
             if(afl_user_fork && pc ==  curr_state_pc && into_syscall && before_syscall_stack == stack)
 #endif
             {
+                FILE *fp= fopen("syscall_log","a+");
+#ifdef TARGET_MIPS
+                target_ulong pc = env->active_tc.PC;
+                target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+                target_ulong pc = env->pc;
+                target_ulong sp = env->regs[13];
+#endif
+                fprintf(fp, "SYSTEM-MODE: after syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", into_syscall, pc, sp);
+                fclose(fp);
+
 #ifdef DECAF 
                 target_ulong new_pgd = DECAF_getPGD(cpu);
                 if(new_pgd == target_pgd){ //user_stack_count // || get_current_pc()  == 0xb960 + tmp_libuclibc_addr

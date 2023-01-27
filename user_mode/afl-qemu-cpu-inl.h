@@ -494,6 +494,12 @@ static void afl_forkserver(CPUState *cpu) {
       close(FORKSRV_FD + 1);
       close(t_fd[0]);
       printf("new child:%d\n",getpid());
+
+      FILE *fp= fopen("syscall_log","a+");
+      fprintf(fp, "_______________________________\n");
+      fprintf(fp, "new child:%d\n",getpid());
+      fclose(fp);
+
       //printf("*********t_fd:%d,%d,%d,%d\n", t_fd[0], t_fd[1], TSL_FD, FORKSRV_FD);
       return;
 

@@ -134,6 +134,10 @@ start()
     WORK_DIR=scratch/${IID}
 
     echo "IID = $IID"
+    
+    if [ -e ${WORK_DIR}/syscall_log ]; then
+        sudo rm -r ${WORK_DIR}/syscall_log;
+    fi
 
     if [ ${OPTION} = "-r" ] || [ ${OPTION} = "--run" ]; then
         if (egrep -sqi "true" ${WORK_DIR}/web); then
