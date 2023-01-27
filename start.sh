@@ -134,7 +134,7 @@ start()
     WORK_DIR=scratch/${IID}
 
     echo "IID = $IID"
-    
+
     if [ -e ${WORK_DIR}/syscall_log ]; then
         sudo rm -r ${WORK_DIR}/syscall_log;
     fi
@@ -198,7 +198,6 @@ start()
             fi
 
             echo -e "\033[32m[+]\033[0m Web server has been reached !"
-            sleep 
             
             # Some Web Services may have been already activated without POST request, so we handle this case.
             MAP_TAB_LINES=$(wc -l < mapping_table | xargs)
