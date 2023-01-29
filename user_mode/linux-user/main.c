@@ -845,7 +845,7 @@ void feed_input(CPUState * cpu)
             target_ulong pc = env->pc;
             target_ulong sp = env->regs[13];
 #endif
-            fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
+            fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
                 total_len, buf_read_index, rest_len, ret, pc, sp);
             fclose(fp);
 

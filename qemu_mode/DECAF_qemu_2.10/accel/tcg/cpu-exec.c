@@ -2566,8 +2566,8 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
         target_ulong pc = env->pc;
         target_ulong sp = env->regs[13];
 #endif
-        fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
-            total_len, buf_read_index, rest_len, final_recv_len, pc, sp);
+        fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
+            total_len, buf_read_index, rest_len, len, final_recv_len, pc, sp);
         fclose(fp);
 
         int tmp_addr = write_package(cpu, a1, recv_buf + buf_read_index, final_recv_len);
