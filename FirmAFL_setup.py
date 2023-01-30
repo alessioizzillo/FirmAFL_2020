@@ -60,6 +60,21 @@ def chroot_creation(cmd):
 	cmd.append("list=\"$(ldd /bin/bash | egrep -o '/lib.*\.[0-9]')\" && for i in $list; do cp -v --parents \"$i\" \"%s\"; done" % firm_dir)
 
 
+def update_keywords():
+	if not os.path.exists("%s/image_tmp" % firm_dir):
+		os.makedirs("%s/image_tmp" % firm_dir)
+	
+	os.system("tar -xf FirmAE/images/%s.tar.gz -C %s/image_tmp" % (firm_id, firm_dir))
+	keywords = [os.path.join(dp, f).replace("%s/image_tmp/web" % firm_dir, "") for dp, dn, filenames in os.walk("%s/image_tmp/web" % firm_dir) for f in filenames]
+	
+	fp = open("FirmAE/scratch/"+firm_id+"/keywords", "a")
+	for i in range(len(keywords)):
+		fp.write("\nweb_str%d=\"%s\"" % (i, keywords[i]))
+	fp.close()
+	
+	os.system("rm -r %s/image_tmp" % (firm_dir))
+
+
 cmd = []
 dst = "FirmAE/scratch/%s/" %firm_id
 dst_input = "FirmAE/scratch/%s/inputs/" %firm_id
@@ -121,4 +136,6 @@ cmd.append("mount --bind /dev %s/dev" % firm_dir)
 
 for i in range(0, len(cmd)):
 	os.system(cmd[i])
+
+update_keywords()
 

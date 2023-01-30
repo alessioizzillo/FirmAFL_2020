@@ -97,11 +97,6 @@ if [ -e ${IMAGE_DIR}/firmadyne/service ]; then
   cp ${IMAGE_DIR}/firmadyne/service ${WORK_DIR}
 fi
 
-echo "----FirmAFL Setup----"
-cd ..
-python3 FirmAFL_setup.py ${IID} ${ARCH}
-cd -
-
 echo "----Patching Filesystem (chroot)----"
 cp "${SCRIPT_DIR}/fixImage.sh" "${IMAGE_DIR}"
 FIRMAE_BOOT=${FIRMAE_BOOT} FIRMAE_ETC=${FIRMAE_ETC} chroot "${IMAGE_DIR}" /busybox ash /fixImage.sh
@@ -149,3 +144,8 @@ e2fsck -y ${DEVICE}
 sync
 sleep 1
 del_partition ${DEVICE:0:$((${#DEVICE}-2))}
+
+echo "----FirmAFL Setup----"
+cd ..
+python3 FirmAFL_setup.py ${IID} ${ARCH}
+cd -
