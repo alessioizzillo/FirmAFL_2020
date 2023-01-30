@@ -475,13 +475,10 @@ void hookapi_remove_hook(uintptr_t handle)
 
   //FIXME: not safe for multi-threading
   QLIST_FOREACH(handle_info, &hookapi_handle_head, link) {
-    if(handle_info->handle != handle)
+    if(((handle_info->handle)&(0xffffffff)) != (handle&(0xffffffff)))
       continue;
 
-    //we found this handle
-    QLIST_REMOVE(handle_info, link);
-    g_free(handle_info);
-    hookapi_record_t *record = (hookapi_record_t *)handle;
+    hookapi_record_t *record = (hookapi_record_t *)(handle_info->handle);
     //LOK: Before we remove it, we need to unregister the handle
     if (record->cbhandle != DECAF_NULL_HANDLE)
     {
@@ -493,8 +490,10 @@ void hookapi_remove_hook(uintptr_t handle)
     }
 
     QLIST_REMOVE(record, link);
-    //here, we do not g_free record->opaque, because caller should g_free it
     g_free(record);
+    QLIST_REMOVE(handle_info, link);
+    g_free(handle_info);
+    
     return;
   }
 
