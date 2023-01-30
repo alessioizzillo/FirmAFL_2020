@@ -388,7 +388,7 @@ void traverse_mmap(CPUState *env, void *opaque)
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_end, &vma_vm_end) < 0)
             goto next;
 
-        DECAF_printf("memory %x:%x ", vma_vm_start, vma_vm_end); 
+        //DECAF_printf("memory %x:%x ", vma_vm_start, vma_vm_end); 
 
         // read the struct* file entry of the curr vma, used to then extract the dentry of the this page
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_file, &vma_file) < 0 || !vma_file)
@@ -419,7 +419,7 @@ void traverse_mmap(CPUState *env, void *opaque)
         if (strlen(name)==0)
             goto next;
 
-        DECAF_printf("%s ", name);
+        //DECAF_printf("%s ", name);
 
 
         if (!strcmp(last_mod_name.c_str(), name))
@@ -461,7 +461,7 @@ void traverse_mmap(CPUState *env, void *opaque)
         
 
 next:
-        DECAF_printf("\n");
+        //DECAF_printf("\n");
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_next, &vma_next) < 0)
             break;
 
@@ -667,7 +667,12 @@ void linux_vmi_init()
 	DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_exec_connector, OCB_CONST);
 	//DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
 	DECAF_registerOptimizedBlockBeginCallback(&proc_end_callback, NULL, OFFSET_PROFILE.proc_exit_connector, OCB_CONST);
-    //DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
+    
+    char *env_var = getenv("CALLSTACK_TRACING");
+    if (env_var && !strcmp(env_var, "1")){
+        DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_fork_connector, OCB_CONST);
+        DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
+    }
 
 	process *kernel_proc = new process();
 	kernel_proc->cr3 = 0;
@@ -822,7 +827,7 @@ void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_end,  &vma_vm_end) < 0)
             goto next;
 
-        DECAF_printf("memory %x:%x ", vma_vm_start, vma_vm_end);    
+        //DECAF_printf("memory %x:%x ", vma_vm_start, vma_vm_end);    
 
 //zyw obtain the memory area property
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_flags, &vma_flags) < 0)      
@@ -913,7 +918,7 @@ void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
 
 next:
         fprintf(fp, "\n");
-        DECAF_printf("\n");
+        //DECAF_printf("\n");
                 
         if (DECAF_read_ptr(env, vma_curr + OFFSET_PROFILE.vma_vm_next, &vma_next) < 0)
             break;

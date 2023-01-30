@@ -108,6 +108,9 @@ uintptr_t hookapi_hook_function_byname(
 		void *opaque,
 		uint32_t sizeof_opaque);
 
+int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_name,
+                    int is_global, target_ulong cr3, hook_proc_t fnhook);
+
 //Below are functions called internally within the framework
 void check_unresolved_hooks(void);
 

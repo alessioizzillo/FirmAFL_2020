@@ -49,6 +49,17 @@ http://code.google.com/p/decaf-platform/
 #include "DECAF_types.h"
 #include "DECAF_target.h"
 
+#include <iostream>
+#include <istream>
+#include <streambuf>
+#include <sstream>
+#include "shared/DECAF_fileio.h"
+#include "shared/elfio/elfio.hpp"
+#include "shared/vmi.h"
+#include "shared/vmi_c_wrapper.h"
+#include "linux_readelf.h"
+using namespace ELFIO;
+
 //LOK: Since the old interface registered for ALL possible basic blocks,
 // the addition of the optimized basic block callback means that
 // the whole logic must be updated to use the optimized basic block
@@ -597,5 +608,108 @@ uintptr_t hookapi_hook_function_byname(const char *mod_name, const char *fun_nam
   }
 }
 
+/* Call back action for file_walk
+ */
+static TSK_WALK_RET_ENUM
+write_action(TSK_FS_FILE * fs_file, TSK_OFF_T a_off, TSK_DADDR_T addr,
+    char *buf, size_t size, TSK_FS_BLOCK_FLAG_ENUM flags, void *ptr)
+{
+    if (size == 0)
+        return TSK_WALK_CONT;
+
+	std::string *sp = static_cast<std::string*>(ptr);
+
+	sp->append(buf,size);
+
+    return TSK_WALK_CONT;
+}
+
+int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_name,
+                    int is_global, target_ulong cr3, hook_proc_t fnhook)
+{
+	target_ulong base;
+	module *mod = VMI_find_module_by_name(mod_name, cr3, &base);
+
+  // int read_elf_info(const char *mod_name, target_ulong start_addr, unsigned int inode_number, unsigned int hook)
+	// printf("mod_name:%s,start_addr:%x\n", mod_name, start_addr);
+	FILE *fp;
+	fp = fopen("debug/exported_symbols.log", "a+");
+
+	bool header_present;
+	TSK_FS_FILE *file_fs = tsk_fs_file_open_meta(disk_info_internal[0].fs, NULL, (TSK_INUM_T)mod->inode_number);
+
+	void *file_stream = static_cast<void *>(new std::string());
+	std::string *local_copy = static_cast<std::string *>(file_stream);
+
+	int ret = 0;
+	ret = tsk_fs_file_walk(file_fs, TSK_FS_FILE_WALK_FLAG_NONE, write_action, file_stream);
+
+	std::istringstream is(*local_copy);
+
+	elfio reader;
+	Elf64_Addr elf_entry;
+	bool found = false;
+	header_present = reader.load(is);
+
+	Elf_Half seg_num = reader.segments.size();
+	// std::cout << "Number of segments: " << seg_num << std::endl;
+	for (int i = 0; i < seg_num; ++i)
+	{
+		const segment *pseg = reader.segments[i];
+
+		if (pseg->get_type() == PT_LOAD)
+		{
+			elf_entry = pseg->get_virtual_address();
+			found = true;
+		}
+		if (found)
+			break;
+	}
+
+	Elf_Half sec_num = reader.sections.size();
+	for (int i = 0; i < sec_num; ++i)
+	{
+		section *psec = reader.sections[i];
+		// Check section type
+		if (psec->get_type() == SHT_DYNSYM || psec->get_type() == SHT_SYMTAB)
+		{
+
+			const symbol_section_accessor symbols(reader, psec);
+			for (unsigned int j = 0; j < symbols.get_symbols_num(); ++j)
+			{
+				std::string name;
+				Elf64_Addr value;
+				Elf_Xword size;
+				unsigned char bind;
+				unsigned char type;
+				Elf_Half section_index;
+				unsigned char other;
+
+				// Read symbol properties
+				symbols.get_symbol(j, name, value, size, bind,
+								   type, section_index, other);
+				//if( size>0  &&  type == STT_FUNC  && ( bind == STB_GLOBAL || bind == STB_WEAK  ) ) {
+				if (type == STT_FUNC)
+				{
+          func_info_enter *info = (func_info_enter *)malloc(sizeof(func_info_enter));
+          info->cr3 = cr3;
+          strcpy(info->proc_name, proc_name);
+          strcpy(info->module_name, mod_name);
+          strcpy(info->func_name, name.c_str());
+          
+          if (strcmp(proc_name, mod_name))
+            value = base+value;
+         
+					hookapi_hook_function(1, value, cr3, fnhook, info, sizeof(func_info_enter));
+					fprintf(fp, "(hookapi_hook_all_module_functions) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\"\n", mod_name, name.c_str(), base, value);
+					fflush(fp);
+				}
+			}
+		}
+	}
+
+	fclose(fp);
+  return 0;
+}
 
 

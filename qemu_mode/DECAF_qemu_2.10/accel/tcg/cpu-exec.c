@@ -650,7 +650,7 @@ int feed_input(CPUState * cpu)
 
         total_len = getWork(recv_buf, 4096);
 
-        FILE *fp= fopen("syscall_log","a+");
+        FILE *fp= fopen("syscall.log","a+");
 #ifdef TARGET_MIPS
         target_ulong pc = env->active_tc.PC;
         target_ulong sp = env->active_tc.gpr[29];
@@ -746,7 +746,9 @@ static DECAF_Handle removeproc_handle = DECAF_NULL_HANDLE;
 static DECAF_Handle block_begin_handle = DECAF_NULL_HANDLE;
 static DECAF_Handle block_end_handle = DECAF_NULL_HANDLE;
 static DECAF_Handle mem_write_cb_handle = DECAF_NULL_HANDLE;
+static DECAF_Handle modulebegin_handle = DECAF_NULL_HANDLE;
 
+CallStack *callstack = NULL;
 
 int data_length(unsigned long value)
 {
@@ -1013,10 +1015,10 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
 #endif
 
 #ifdef SHOW_SYSCALL_TRACE
-        int file_exist = access("syscall_trace_full_before", F_OK);
+        int file_exist = access("debug/syscall_trace_full_before.log", F_OK);
         if(file_exist != 0)
         {
-            previous_trace_fp = fopen("syscall_trace_full_before", "a+");    
+            previous_trace_fp = fopen("debug/syscall_trace_full_before.log", "a+");    
         }
 #endif
 
@@ -1026,6 +1028,80 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     }
 #endif 
 }
+
+
+
+static void function_return_callback(void *opaque)
+{
+    func_info_return *info_return = (func_info_return *)opaque;
+    CPUArchState *env = (CPUArchState *)current_cpu->env_ptr;
+
+#ifdef TARGET_MIPS
+    target_ulong pc = env->active_tc.PC;
+    target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+    target_ulong pc = env->pc;
+    target_ulong sp = env->regs[13];
+#endif
+
+    if (!CALLSTACK_function_return(callstack, info_return->cr3, sp))
+        hookapi_remove_hook(info_return->handle);
+
+    CALLSTACK_dump_process(callstack, info_return->cr3, sp);
+
+    free(info_return);
+}
+
+
+static void function_enter_callback(void *opaque)
+{
+    func_info_enter *info_enter = (func_info_enter *)opaque;
+    CPUArchState *env = (CPUArchState *)current_cpu->env_ptr;
+
+#ifdef TARGET_MIPS
+    target_ulong pc = env->active_tc.PC;
+    target_ulong sp = env->active_tc.gpr[29];
+    target_ulong ret_addr = env->active_tc.gpr[31];
+#elif defined(TARGET_ARM)
+    target_ulong pc = env->pc;
+    target_ulong sp = env->regs[13];
+    target_ulong ret_addr = env->regs[14];
+#endif
+
+    func_info_return *info_return = (func_info_return *)malloc(sizeof(func_info_return));
+    info_return->cr3 = info_enter->cr3;
+    strcpy(info_return->proc_name, info_enter->proc_name);
+    strcpy(info_return->module_name, info_enter->module_name);
+    strcpy(info_return->func_name, info_enter->func_name);
+    info_return->handle = hookapi_hook_return(ret_addr, function_return_callback, info_return, sizeof(func_info_return));
+
+    CALLSTACK_function_enter(callstack, info_enter->cr3, sp, info_enter->module_name, info_enter->func_name, info_return->handle); 
+    CALLSTACK_dump_process(callstack, info_enter->cr3, sp);
+}
+
+
+static void callbacktests_loadmodule_callback(VMI_Callback_Params* params)
+{
+    uint32_t pid;
+    uint32_t par_pid;
+    char procname[20];
+
+    int status = VMI_find_process_by_cr3_all(params->cp.cr3, procname, 64, &pid, &par_pid);
+
+    FILE *module_file = fopen("debug/execution_module_list.log","a+");
+    fprintf(module_file, "%s:::%s\n", procname, params->lm.name);
+    fclose(module_file);
+
+    char *env_var = getenv("CALLSTACK_TRACING");
+    if (env_var && !strcmp(env_var, "1") && !strcmp(program_analysis, ""))
+        getconfig("program_analysis", program_analysis);
+
+#if defined(FUZZ) || defined(MEM_MAPPING)
+    if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL)
+        hookapi_hook_all_module_functions(procname, params->lm.name, 1, params->lm.cr3, function_enter_callback);
+#endif
+}
+
 
 static void callbacktests_removeproc_callback(VMI_Callback_Params* params)
 {
@@ -1060,6 +1136,7 @@ int callbacktests_init(void)
     DECAF_printf("Hello World\n");
     processbegin_handle = VMI_register_callback(VMI_CREATEPROC_CB, &callbacktests_loadmainmodule_callback, NULL);
     removeproc_handle = VMI_register_callback(VMI_REMOVEPROC_CB, &callbacktests_removeproc_callback, NULL);
+    modulebegin_handle = VMI_register_callback(VMI_LOADMODULE_CB, &callbacktests_loadmodule_callback, NULL);
 
     //block_begin_handle = DECAF_registerOptimizedBlockBeginCallback(&do_block_begin, NULL, INV_ADDR, OCB_ALL);
 #ifdef STORE_PAGE_FUNC
@@ -2337,7 +2414,7 @@ int specify_fork_pc(CPUState *cpu)
 int start_fork(CPUState *cpu, target_ulong pc)
 {
 
-    FILE *fp= fopen("syscall_log","a+");
+    FILE *fp= fopen("debug/syscall.log","a+");
     fprintf(fp, "START FORK!\n\n");
     fclose(fp);
 
@@ -2558,7 +2635,7 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
             final_recv_len  = rest_len;
         }
 
-        FILE *fp= fopen("syscall_log","a+");
+        FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
         target_ulong pc = env->active_tc.PC;
         target_ulong sp = env->active_tc.gpr[29];
@@ -2658,6 +2735,9 @@ int cpu_exec(CPUState *cpu)
     int recvfrom_syscall = 4176;
     int accept_syscall = 4168;
 #endif
+
+    if (callstack == NULL)
+        callstack = (CallStack *)malloc(sizeof(CallStack));
 
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int ret;
@@ -3129,7 +3209,7 @@ skip_to_pos:
             if(afl_user_fork && pc ==  curr_state_pc && into_syscall && before_syscall_stack == stack)
 #endif
             {
-                FILE *fp= fopen("syscall_log","a+");
+                FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
                 target_ulong pc = env->active_tc.PC;
                 target_ulong sp = env->active_tc.gpr[29];

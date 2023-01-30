@@ -2075,7 +2075,7 @@ void DECAF_blocks_init()
 // at an offset
 int DECAF_bdrv_pread(void *opaque, int64_t offset, void *buf, int count) {
 	
-	printf("DECAF_bdrv_pread:%x\n", opaque);
+	//printf("DECAF_bdrv_pread:%x\n", opaque);
 	//return bdrv_pread((BlockDriverState *)opaque, offset, buf, count);
 	return bdrv_pread((BdrvChild *)opaque, offset, buf, count);
 

@@ -303,6 +303,8 @@ int VMI_get_guest_version_c(void)
 		return 2;//linux
 	return 0;//unknown
 }
+
+
 int VMI_get_current_tid_c(CPUState* _env)
 {
 #ifdef TARGET_I386
@@ -326,6 +328,109 @@ int VMI_get_current_tid_c(CPUState* _env)
 #endif
 
 	return -1;
+}
+
+
+ProcessCallStack * CALLSTACK_get_pcs_by_cr3(CallStack *callstack, target_ulong cr3){
+    if (callstack == NULL)
+        return NULL;
+
+    ProcessCallStack *pcs = callstack->pcs_stack_top;
+    do {
+        if (!pcs || pcs->cr3 == cr3)
+            break;
+        pcs = pcs->next;
+    } while (pcs);
+
+    return pcs; 
+}
+
+  
+int CALLSTACK_function_enter(CallStack *callstack, target_ulong cr3, target_ulong cur_sp, char *module_name, char *func_name, uintptr_t return_hook_handle){
+    ProcessCallStack *pcs = CALLSTACK_get_pcs_by_cr3(callstack, cr3);
+
+    if (CALLSTACK_prune_callstack(pcs, cur_sp)){
+        ProcessCallStack *new_pcs = (ProcessCallStack *)malloc(sizeof(ProcessCallStack));
+        if (!new_pcs)
+            return -1;
+        new_pcs->cr3 = cr3;
+        new_pcs->fc_stack_top = NULL;
+        new_pcs->next = callstack->pcs_stack_top;
+        callstack->pcs_stack_top = new_pcs;
+		pcs = callstack->pcs_stack_top;
+    }
+
+    FunctionCall* functionCall = (FunctionCall *)malloc(sizeof(FunctionCall));
+    if (!functionCall)
+        return -1;
+    
+	functionCall->return_hook_handle = return_hook_handle;
+	functionCall->sp = cur_sp;
+    memset(functionCall->module_name, 0, sizeof(functionCall->module_name));
+    strcpy(functionCall->module_name, module_name);
+    memset(functionCall->func_name, 0, sizeof(functionCall->func_name));
+    strcpy(functionCall->func_name, func_name);
+    functionCall->next = pcs->fc_stack_top;
+    pcs->fc_stack_top = functionCall;
+
+    return 0;
+}
+
+
+int CALLSTACK_function_return(CallStack *callstack, target_ulong cr3, target_ulong cur_sp){
+    ProcessCallStack *pcs = CALLSTACK_get_pcs_by_cr3(callstack, cr3);
+
+	if(CALLSTACK_prune_callstack(pcs, cur_sp))
+        return -1;
+
+    return 0;
+}
+
+
+int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong cur_sp){
+	int len = 1;
+	FunctionCall* fc;
+    ProcessCallStack *pcs = CALLSTACK_get_pcs_by_cr3(callstack, cr3);
+
+	if (!pcs || !(pcs->fc_stack_top))
+		return -1;
+	else {
+		char file_name[50];
+		memset(file_name, 0, sizeof(file_name));
+		sprintf(file_name, "debug/exec_calltrace_%d", cr3);
+
+		FILE *fd = fopen(file_name,"a+");
+
+		fc = pcs->fc_stack_top;
+		while (fc){
+			if (fc->next)
+				fprintf(fd, "%s:%s(sp: %lx)<-", fc->module_name, fc->func_name, fc->sp);
+			else
+				fprintf(fd, "%s:%s(sp: %lx)", fc->module_name, fc->func_name, fc->sp);
+
+			fc = fc->next;
+		}
+		fprintf(fd, "\n");
+		fclose(fd);
+	}
+
+    return 0;
+}
+
+
+int CALLSTACK_prune_callstack(ProcessCallStack *pcs, target_ulong cur_sp){
+    if (!pcs || !(pcs->fc_stack_top))
+        return -1;
+
+	while (pcs->fc_stack_top->sp <= cur_sp) {
+    	FunctionCall* temp = pcs->fc_stack_top;
+    	pcs->fc_stack_top = pcs->fc_stack_top->next;
+    	free(temp);
+		if (!pcs->fc_stack_top)
+			break;
+	}
+
+    return 0; 
 }
 
 //#endif /*CONFIG_VMI_ENABLE*/

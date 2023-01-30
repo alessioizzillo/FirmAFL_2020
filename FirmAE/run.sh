@@ -77,6 +77,8 @@ IID=-1
 function run_emulation()
 {
     export FUZZ=0
+    export CALLSTACK_TRACING=0
+
     echo "[*] ${1} emulation start!!!"
     INFILE=${1}
     BRAND=`get_brand ${INFILE} ${BRAND}`
@@ -280,6 +282,7 @@ function run_emulation()
         # ================================
         # just run mode
         # ================================
+        export CALLSTACK_TRACING=1
         check_network ${IP} false &
         ${WORK_DIR}/run.sh
     elif [ ${OPTION} = "fuzz" ]; then
@@ -287,6 +290,7 @@ function run_emulation()
         # just fuzz mode
         # ================================
         export FUZZ=1
+        export CALLSTACK_TRACING=1
         check_network ${IP} false &
         ${WORK_DIR}/run.sh
     elif [ ${OPTION} = "boot" ]; then

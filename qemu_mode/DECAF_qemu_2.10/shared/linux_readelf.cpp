@@ -127,7 +127,7 @@ int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int i
 
 	//printf("mod_name:%s,start_addr:%x\n", mod_name, start_addr);
 	FILE *fp;
-	fp = fopen("exported_symbols.log","a");
+	fp = fopen("debug/exported_symbols.log","a+");
 
 
 	
@@ -185,7 +185,7 @@ int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int i
 				if(type == STT_FUNC ) {
 					//printf("mod,%s,%s\n",mod_name, name.c_str());
 					register_symbol(mod_name, name.c_str(), (value-elf_entry), inode_number);
-					fprintf(fp, "mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\" \n",mod_name, name.c_str(),elf_entry ,value);
+					fprintf(fp, "(read_elf_info) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\" \n",mod_name, name.c_str(),elf_entry ,value);
 					fflush(fp);
 				}
 			}

@@ -3091,6 +3091,10 @@ int main(int argc, char **argv, char **envp)
 
     runstate_init();
 
+    struct stat st = {0};
+    if (stat("debug", &st) == -1)
+        mkdir("debug", 0777);
+
     if (qcrypto_init(&err) < 0) {
         error_reportf_err(err, "cannot initialize crypto: ");
         exit(1);

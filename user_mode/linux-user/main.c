@@ -655,7 +655,7 @@ void get_input(CPUState * cpu)
         total_len = getWork(recv_buf, 4096);
 
         CPUArchState *env = cpu->env_ptr;
-        FILE *fp= fopen("syscall_log","a+");
+        FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
         target_ulong pc = env->active_tc.PC;
         target_ulong sp = env->active_tc.gpr[29];
@@ -837,7 +837,7 @@ void feed_input(CPUState * cpu)
                 buf[ret] = '\0'; // impotant 106030
             }
 
-            FILE *fp= fopen("syscall_log","a+");
+            FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
             target_ulong pc = env->active_tc.PC;
             target_ulong sp = env->active_tc.gpr[29];
@@ -3853,7 +3853,7 @@ void cpu_loop(CPUMIPSState *env)
                     //gettimeofday(&handle_state_start, NULL);
 
 
-                    FILE *fp= fopen("syscall_log","a+");
+                    FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
                     target_ulong pc = env->active_tc.PC;
                     target_ulong sp = env->active_tc.gpr[29];

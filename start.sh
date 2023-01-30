@@ -84,7 +84,7 @@ cleanup() {
     echo -e "\033[33m[+]\033[0m Killing Qemu if active"
     
     ID=$(pgrep qemu)
-    if [ ! $ID = "" ]; then    
+    if [[ ! $ID = "" ]]; then    
         sudo kill -9 ${ID}
         sleep 1
     fi
@@ -135,8 +135,8 @@ start()
 
     echo "IID = $IID"
 
-    if [ -e ${WORK_DIR}/syscall_log ]; then
-        sudo rm -r ${WORK_DIR}/syscall_log;
+    if [ -d ${WORK_DIR}/debug ]; then
+        sudo rm -r ${WORK_DIR}/debug;
     fi
 
     if [ ${OPTION} = "-r" ] || [ ${OPTION} = "--run" ]; then

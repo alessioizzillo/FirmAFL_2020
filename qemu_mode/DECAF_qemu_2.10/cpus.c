@@ -2204,10 +2204,10 @@ gotPipeNotification(void *ctx)
             fclose(previous_trace_fp);
             previous_trace_fp = NULL;
         }
-        int file_exist = access("syscall_trace_full_after", F_OK);
+        int file_exist = access("debug/syscall_trace_full_after.log", F_OK);
         if(file_exist != 0)
         {
-            sys_trace_fp = fopen("syscall_trace_full_after", "a+");    
+            sys_trace_fp = fopen("debug/syscall_trace_full_after.log", "a+");    
         }
         
 #endif

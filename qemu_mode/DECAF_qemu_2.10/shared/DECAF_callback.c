@@ -267,7 +267,7 @@ DECAF_Handle DECAF_registerOptimizedBlockBeginCallback(
   }
   
   //Heng: Optimization on OCB_CONST is not stable. We use OCB_ALL instead for now.
-  if (type == OCB_CONST) type = OCB_ALL;
+  //if (type == OCB_CONST) type = OCB_ALL;
 
   //pre-populate the info
   cb_struct->callback = cb_func;

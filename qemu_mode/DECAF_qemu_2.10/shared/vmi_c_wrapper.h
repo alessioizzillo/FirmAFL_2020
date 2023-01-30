@@ -96,6 +96,49 @@ extern int VMI_get_guest_version_c(void);
 extern int VMI_list_modules(Monitor *mon, uint32_t pid);
 extern int VMI_list_processes(Monitor *mon);
 
+typedef struct FunctionCall
+{
+    uintptr_t return_hook_handle;
+    target_long sp;
+    char module_name[30];
+    char func_name[50];
+    struct FunctionCall* next;
+} FunctionCall;
+
+typedef struct ProcessCallStack
+{
+    target_ulong cr3;
+    target_ulong sp;
+    FunctionCall *fc_stack_top;
+    struct ProcessCallStack *next;
+} ProcessCallStack;
+
+typedef struct CallStack
+{
+    ProcessCallStack *pcs_stack_top;
+} CallStack;
+
+int CALLSTACK_function_enter(CallStack *callstack, target_ulong cr3, target_ulong cur_sp, char *module_name, char *func_name, uintptr_t return_hook_handle);
+int CALLSTACK_function_return(CallStack *callstack, target_ulong cr3, target_ulong cur_sp);
+int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong cur_sp);
+ProcessCallStack * CALLSTACK_get_pcs_by_cr3(CallStack *callstack, target_ulong cr3);
+int CALLSTACK_prune_callstack(ProcessCallStack *pcs, target_ulong cur_sp);
+
+typedef struct func_info_enter {
+    target_ulong cr3;
+    char proc_name[20];
+    char module_name[20];
+    char func_name[50];
+} func_info_enter;
+
+typedef struct func_info_return {
+    target_ulong cr3;
+    uintptr_t handle;
+    char proc_name[20];
+    char module_name[20];
+    char func_name[50];
+} func_info_return;
+
 #ifdef __cplusplus
 }
 #endif

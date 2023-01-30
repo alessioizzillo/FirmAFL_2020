@@ -495,7 +495,7 @@ static void afl_forkserver(CPUState *cpu) {
       close(t_fd[0]);
       printf("new child:%d\n",getpid());
 
-      FILE *fp= fopen("syscall_log","a+");
+      FILE *fp= fopen("debug/syscall.log","a+");
       fprintf(fp, "_______________________________\n");
       fprintf(fp, "new child:%d\n",getpid());
       fclose(fp);
