@@ -189,13 +189,16 @@ start()
             fi
 
             echo -e "\033[33m[*]\033[0m Trying to connect to the web server..."
-            if [ ! curl --max-time 2 --output /dev/null --silent http://${IP_NUM} ]; then
+            if curl --max-time 2 --output /dev/null --silent http://${IP_NUM}; then
                 echo -e "\033[33m[*]\033[0m Trying AGAIN to connect to the web server..."
-                if [ ! curl --max-time 2 --output /dev/null --silent https://${IP_NUM} ]; then
+                if curl --max-time 2 --output /dev/null --silent https://${IP_NUM}; then
                     echo -e "\033[31m[-]\033[0m The web server cannot be reached!"
                     exit
                 fi
             fi
+
+            echo -e "\033[33m[*]\033[0m Let's wait 5 seconds...\n"
+            sleep 5
 
             echo -e "\033[32m[+]\033[0m Web server has been reached !"
             
@@ -236,6 +239,9 @@ start()
             echo core | sudo tee /proc/sys/kernel/core_pattern;
             export AFL_SKIP_CPUFREQ=1;
             export FUZZ=1;
+            export DEBUG=0;
+
+            export DEBUG=1;    # Uncomment if you want debug logs.
 
             TARGET_PROGRAM_PATH=${TARGET_PROGRAM_PATH%%[[:space:]]*}
             TARGET_PROGRAM_PATH="${TARGET_PROGRAM_PATH:1}"

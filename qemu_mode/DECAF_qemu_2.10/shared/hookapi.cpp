@@ -632,8 +632,12 @@ int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_nam
 
   // int read_elf_info(const char *mod_name, target_ulong start_addr, unsigned int inode_number, unsigned int hook)
 	// printf("mod_name:%s,start_addr:%x\n", mod_name, start_addr);
-	FILE *fp;
-	fp = fopen("debug/exported_symbols.log", "a+");
+
+  FILE *fp;
+
+  char *env_var = getenv("DEBUG");
+  if (env_var && !strcmp(env_var, "1"))
+    fp = fopen("debug/exported_symbols.log", "a+");
 
 	bool header_present;
 	TSK_FS_FILE *file_fs = tsk_fs_file_open_meta(disk_info_internal[0].fs, NULL, (TSK_INUM_T)mod->inode_number);
@@ -701,14 +705,19 @@ int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_nam
             value = base+value;
          
 					hookapi_hook_function(1, value, cr3, fnhook, info, sizeof(func_info_enter));
-					fprintf(fp, "(hookapi_hook_all_module_functions) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\"\n", mod_name, name.c_str(), base, value);
-					fflush(fp);
+
+          if (env_var && !strcmp(env_var, "1")){
+            fprintf(fp, "(hookapi_hook_all_module_functions) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\"\n", mod_name, name.c_str(), base, value);
+            fflush(fp);
+          }
 				}
 			}
 		}
 	}
 
-	fclose(fp);
+  if (env_var && !strcmp(env_var, "1"))
+	  fclose(fp);
+
   return 0;
 }
 

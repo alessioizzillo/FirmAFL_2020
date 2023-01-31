@@ -126,11 +126,13 @@ static void register_symbol(const char * mod_name, const char * func_name,
 int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int inode_number) {
 
 	//printf("mod_name:%s,start_addr:%x\n", mod_name, start_addr);
+
 	FILE *fp;
-	fp = fopen("debug/exported_symbols.log","a+");
 
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1"))
+		fp = fopen("debug/exported_symbols.log","a+");
 
-	
 	bool header_present;	
 	TSK_FS_FILE *file_fs = tsk_fs_file_open_meta(disk_info_internal[0].fs, NULL, (TSK_INUM_T)inode_number);
 	
@@ -185,8 +187,11 @@ int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int i
 				if(type == STT_FUNC ) {
 					//printf("mod,%s,%s\n",mod_name, name.c_str());
 					register_symbol(mod_name, name.c_str(), (value-elf_entry), inode_number);
-					fprintf(fp, "(read_elf_info) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\" \n",mod_name, name.c_str(),elf_entry ,value);
-					fflush(fp);
+
+    				if (env_var && !strcmp(env_var, "1")){
+						fprintf(fp, "(read_elf_info) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\" \n",mod_name, name.c_str(),elf_entry ,value);
+						fflush(fp);
+					}
 				}
 			}
 		}

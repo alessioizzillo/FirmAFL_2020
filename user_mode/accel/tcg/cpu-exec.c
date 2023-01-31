@@ -163,6 +163,15 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     AFL_QEMU_CPU_SNIPPET2;
 #endif
 */
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        if (itb->pc < 0x70000000){
+            FILE *fp= fopen("debug/syscall.log","a+");
+            fprintf(fp, "USER-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
+            fclose(fp);
+        }
+    }
+
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [%d: " TARGET_FMT_lx "] %s\n",
                            itb->tc_ptr, cpu->cpu_index, itb->pc,
@@ -598,7 +607,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     uintptr_t ret;
     int32_t insns_left;
-
+    
     trace_exec_tb(tb, tb->pc);
     ret = cpu_tb_exec(cpu, tb);
     tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);

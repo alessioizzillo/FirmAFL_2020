@@ -662,7 +662,7 @@ int feed_input(CPUState * cpu)
 
         if(check_http_header(recv_buf) == 0)
         {
-            fprintf(fp, "USER-MODE: ERROR! invalid http_header (pc: %lx, sp: %lx)\n", pc, sp);
+            fprintf(fp, "SYSTEM-MODE: ERROR! invalid http_header (pc: %lx, sp: %lx)\n", pc, sp);
             //printf("recv_buf:%s\n", recv_buf);
             return 2;
         }
@@ -1088,11 +1088,14 @@ static void callbacktests_loadmodule_callback(VMI_Callback_Params* params)
 
     int status = VMI_find_process_by_cr3_all(params->cp.cr3, procname, 64, &pid, &par_pid);
 
-    FILE *module_file = fopen("debug/execution_module_list.log","a+");
-    fprintf(module_file, "%s:::%s\n", procname, params->lm.name);
-    fclose(module_file);
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        FILE *module_file = fopen("debug/execution_module_list.log","a+");
+        fprintf(module_file, "%s:::%s\n", procname, params->lm.name);
+        fclose(module_file);
+    }
 
-    char *env_var = getenv("CALLSTACK_TRACING");
+    env_var = getenv("CALLSTACK_TRACING");
     if (env_var && !strcmp(env_var, "1") && !strcmp(program_analysis, ""))
         getconfig("program_analysis", program_analysis);
 
@@ -1255,6 +1258,15 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     TranslationBlock *last_tb;
     int tb_exit;
     uint8_t *tb_ptr = itb->tc_ptr;
+
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        if (itb->pc < 0x70000000){
+            FILE *fp= fopen("debug/syscall.log","a+");
+            fprintf(fp, "SYSTEM-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
+            fclose(fp);
+        }
+    }
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [%d: " TARGET_FMT_lx "] %s\n",
@@ -2414,9 +2426,12 @@ int specify_fork_pc(CPUState *cpu)
 int start_fork(CPUState *cpu, target_ulong pc)
 {
 
-    FILE *fp= fopen("debug/syscall.log","a+");
-    fprintf(fp, "START FORK!\n\n");
-    fclose(fp);
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        FILE *fp= fopen("debug/syscall.log","a+");
+        fprintf(fp, "START FORK!\n\n");
+        fclose(fp);
+    }
 
     CPUArchState * env = cpu->env_ptr;
 
@@ -2635,7 +2650,6 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
             final_recv_len  = rest_len;
         }
 
-        FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
         target_ulong pc = env->active_tc.PC;
         target_ulong sp = env->active_tc.gpr[29];
@@ -2643,9 +2657,14 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
         target_ulong pc = env->pc;
         target_ulong sp = env->regs[13];
 #endif
-        fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
-            total_len, buf_read_index, rest_len, len, final_recv_len, pc, sp);
-        fclose(fp);
+
+        char *env_var = getenv("DEBUG");
+        if (env_var && !strcmp(env_var, "1")){
+            FILE *fp= fopen("debug/syscall.log","a+");
+            fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
+                total_len, buf_read_index, rest_len, len, final_recv_len, pc, sp);
+            fclose(fp);
+        }
 
         int tmp_addr = write_package(cpu, a1, recv_buf + buf_read_index, final_recv_len);
         DECAF_write_mem(cpu, tmp_addr, 1, "\0"); //important
@@ -3209,7 +3228,7 @@ skip_to_pos:
             if(afl_user_fork && pc ==  curr_state_pc && into_syscall && before_syscall_stack == stack)
 #endif
             {
-                FILE *fp= fopen("debug/syscall.log","a+");
+
 #ifdef TARGET_MIPS
                 target_ulong pc = env->active_tc.PC;
                 target_ulong sp = env->active_tc.gpr[29];
@@ -3217,8 +3236,13 @@ skip_to_pos:
                 target_ulong pc = env->pc;
                 target_ulong sp = env->regs[13];
 #endif
-                fprintf(fp, "SYSTEM-MODE: after syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", into_syscall, pc, sp);
-                fclose(fp);
+
+                char *env_var = getenv("DEBUG");
+                if (env_var && !strcmp(env_var, "1")){
+                    FILE *fp= fopen("debug/syscall.log","a+");
+                    fprintf(fp, "SYSTEM-MODE: after syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", into_syscall, pc, sp);
+                    fclose(fp);
+                }
 
 #ifdef DECAF 
                 target_ulong new_pgd = DECAF_getPGD(cpu);

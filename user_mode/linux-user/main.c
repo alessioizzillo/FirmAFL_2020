@@ -655,7 +655,7 @@ void get_input(CPUState * cpu)
         total_len = getWork(recv_buf, 4096);
 
         CPUArchState *env = cpu->env_ptr;
-        FILE *fp= fopen("debug/syscall.log","a+");
+
 #ifdef TARGET_MIPS
         target_ulong pc = env->active_tc.PC;
         target_ulong sp = env->active_tc.gpr[29];
@@ -663,16 +663,23 @@ void get_input(CPUState * cpu)
         target_ulong pc = env->pc;
         target_ulong sp = env->regs[13];
 #endif
-        fprintf(fp, "USER-MODE: filled recv_buffer (pc: %lx, sp: %lx)\n", pc, sp);
+
+        FILE *fp;
+        char *env_var = getenv("DEBUG");
+        if (env_var && !strcmp(env_var, "1")){
+            fp = fopen("debug/syscall.log","a+");
+            fprintf(fp, "USER-MODE: filled recv_buffer (pc: %lx, sp: %lx)\n", pc, sp);
+        }
 
         if(check_http_header(recv_buf) == 0)
         {
-            fprintf(fp, "USER-MODE: ERROR! invalid http_header. Exiting... (pc: %lx, sp: %lx)\n", pc, sp);
+            if (env_var && !strcmp(env_var, "1"))
+                fprintf(fp, "USER-MODE: ERROR! invalid http_header. Exiting... (pc: %lx, sp: %lx)\n", pc, sp);
             //printf("recv_buf:%s\n", recv_buf);
             normal_exit(0);
         }
-
-        fclose(fp);
+        if (env_var && !strcmp(env_var, "1"))
+            fclose(fp);
     }
     else if (strcmp(feed_type, "FEED_CMD") == 0)
     {
@@ -837,7 +844,6 @@ void feed_input(CPUState * cpu)
                 buf[ret] = '\0'; // impotant 106030
             }
 
-            FILE *fp= fopen("debug/syscall.log","a+");
 #ifdef TARGET_MIPS
             target_ulong pc = env->active_tc.PC;
             target_ulong sp = env->active_tc.gpr[29];
@@ -845,9 +851,14 @@ void feed_input(CPUState * cpu)
             target_ulong pc = env->pc;
             target_ulong sp = env->regs[13];
 #endif
-            fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
-                total_len, buf_read_index, rest_len, ret, pc, sp);
-            fclose(fp);
+
+            char *env_var = getenv("DEBUG");
+            if (env_var && !strcmp(env_var, "1")){
+                FILE *fp= fopen("debug/syscall.log","a+");
+                fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
+                    total_len, buf_read_index, rest_len, ret, pc, sp);
+                fclose(fp);
+            }
 
 
             if(MSG_PEEK == flag && (recv_syscall == 175 || recv_syscall == 176))
@@ -1048,6 +1059,13 @@ void normal_exit(int syscall_num)
     //write_aflcmd(cmd, &user_mode_time);
     write_aflcmd_complete(cmd, &user_mode_time);
 
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        FILE *fp= fopen("debug/syscall.log","a+");
+        fprintf(fp, "USER-MODE: normal exiting...\n");
+        fclose(fp);
+    }
+
     exit(0);
 }
 
@@ -1094,6 +1112,14 @@ void bug_exit(target_ulong addr)
     printf("exit with error:%x\n", addr);
     //printf("last pc:%x,CP0_UserLocal:%x\n", last_pc,env->active_tc.CP0_UserLocal);
 #endif
+
+    char *env_var = getenv("DEBUG");
+    if (env_var && !strcmp(env_var, "1")){
+        FILE *fp= fopen("debug/syscall.log","a+");
+        fprintf(fp, "USER-MODE: bug exiting...\n");
+        fclose(fp);
+    }
+
     exit(32);
 
 }
@@ -3720,6 +3746,22 @@ void cpu_loop(CPUMIPSState *env)
             env->active_tc.PC += 4;
 # ifdef TARGET_ABI_MIPSO32
             syscall_num = env->active_tc.gpr[2] - 4000;
+
+#ifdef TARGET_MIPS
+            target_ulong pc = env->active_tc.PC;
+            target_ulong sp = env->active_tc.gpr[29];
+#elif defined(TARGET_ARM)
+            target_ulong pc = env->pc;
+            target_ulong sp = env->regs[13];
+#endif
+
+            char *env_var = getenv("DEBUG");
+            if (env_var && !strcmp(env_var, "1")){
+                FILE *fp= fopen("debug/syscall.log","a+");
+                fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", syscall_num, pc, sp);
+                fclose(fp);
+            }
+
             //printf("syscall num:%d\n", syscall_num);
             exit_func(syscall_num, program_id);//zyw
             if (syscall_num >= sizeof(mips_syscall_args)) {
@@ -3851,19 +3893,6 @@ void cpu_loop(CPUMIPSState *env)
                     user_syscall_flag = 0;
                     env->active_tc.PC -= 4; //very important
                     //gettimeofday(&handle_state_start, NULL);
-
-
-                    FILE *fp= fopen("debug/syscall.log","a+");
-#ifdef TARGET_MIPS
-                    target_ulong pc = env->active_tc.PC;
-                    target_ulong sp = env->active_tc.gpr[29];
-#elif defined(TARGET_ARM)
-                    target_ulong pc = env->pc;
-                    target_ulong sp = env->regs[13];
-#endif
-                    fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", syscall_num, pc, sp);
-                    fclose(fp);
-
 
                     //printf("time:%f, remote syscall:%d, arg:%x,%x,%x,%x\n",handle_state_start.tv_sec + handle_state_start.tv_usec/1000000.0, 
                         //syscall_num, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6]);
@@ -5926,6 +5955,10 @@ target_ulong target_end = 0x7fffffff;
 
 int main(int argc, char **argv, char **envp)
 {
+    struct stat st = {0};
+    if (stat("debug", &st) == -1)
+        mkdir("debug", 0777);
+
     char *env_var = getenv("FUZZ");
     if (env_var && !strcmp(env_var, "1")){
 #ifdef MEM_MAPPING
