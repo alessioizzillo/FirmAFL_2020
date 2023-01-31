@@ -1348,7 +1348,11 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     target_ulong a2 = env->regs[2];
 #endif
 
-    if(syscall_num == 166) //nanosleep 10853
+    if(syscall_num == 45){
+        *local_or_not = 1;
+        return 0;
+    }
+    else if(syscall_num == 166) //nanosleep 10853
     {
         *local_or_not = 2;
         return 0;
