@@ -129,8 +129,8 @@ int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int i
 
 	FILE *fp;
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1"))
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1"))
 		fp = fopen("debug/exported_symbols.log","a+");
 
 	bool header_present;	
@@ -188,7 +188,7 @@ int read_elf_info(const char * mod_name, target_ulong start_addr, unsigned int i
 					//printf("mod,%s,%s\n",mod_name, name.c_str());
 					register_symbol(mod_name, name.c_str(), (value-elf_entry), inode_number);
 
-    				if (env_var && !strcmp(env_var, "1")){
+    				if (env_var_debug && !strcmp(env_var_debug, "1")){
 						fprintf(fp, "(read_elf_info) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\" \n",mod_name, name.c_str(),elf_entry ,value);
 						fflush(fp);
 					}

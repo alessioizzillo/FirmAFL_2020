@@ -163,8 +163,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     AFL_QEMU_CPU_SNIPPET2;
 #endif
 */
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         if (itb->pc < 0x70000000){
             FILE *fp= fopen("debug/syscall.log","a+");
             fprintf(fp, "USER-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
@@ -711,8 +711,8 @@ int cpu_exec(CPUState *cpu)
         int tb_exit = 0;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
-        char *env_var = getenv("FUZZ");
-        if (env_var && !strcmp(env_var, "1")){
+        char *env_var_fuzz = getenv("FUZZ");
+        if (env_var_fuzz && !strcmp(env_var_fuzz, "1")){
             CPUArchState *env = cpu->env_ptr;
 #ifdef TARGET_MIPS
             target_ulong pc = env->active_tc.PC;

@@ -2246,8 +2246,8 @@ gotPipeNotification(void *ctx)
 
 void qemu_init_vcpu(CPUState *cpu)
 {
-    char *env_var = getenv("FUZZ");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_fuzz = getenv("FUZZ");
+    if (env_var_fuzz && !strcmp(env_var_fuzz, "1")){
 #if defined(FUZZ) || defined(MEM_MAPPING) 
     FirmAFL_config();
 #endif

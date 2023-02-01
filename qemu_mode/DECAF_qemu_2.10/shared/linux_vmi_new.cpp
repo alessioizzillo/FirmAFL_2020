@@ -668,8 +668,8 @@ void linux_vmi_init()
 	//DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
 	DECAF_registerOptimizedBlockBeginCallback(&proc_end_callback, NULL, OFFSET_PROFILE.proc_exit_connector, OCB_CONST);
     
-    char *env_var = getenv("CALLSTACK_TRACING");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_callstack_tracing = getenv("CALLSTACK_TRACING");
+    if (env_var_callstack_tracing && !strcmp(env_var_callstack_tracing, "1")){
         DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_fork_connector, OCB_CONST);
         DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
     }

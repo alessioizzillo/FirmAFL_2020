@@ -635,8 +635,8 @@ int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_nam
 
   FILE *fp;
 
-  char *env_var = getenv("DEBUG");
-  if (env_var && !strcmp(env_var, "1"))
+  char *env_var_debug = getenv("DEBUG");
+  if (env_var_debug && !strcmp(env_var_debug, "1"))
     fp = fopen("debug/exported_symbols.log", "a+");
 
 	bool header_present;
@@ -706,7 +706,7 @@ int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_nam
          
 					hookapi_hook_function(1, value, cr3, fnhook, info, sizeof(func_info_enter));
 
-          if (env_var && !strcmp(env_var, "1")){
+          if (env_var_debug && !strcmp(env_var_debug, "1")){
             fprintf(fp, "(hookapi_hook_all_module_functions) mod_name=\"%s\" elf_name=\"%s\" base_addr=\"%x\" func_addr= \"%x\"\n", mod_name, name.c_str(), base, value);
             fflush(fp);
           }
@@ -715,7 +715,7 @@ int hookapi_hook_all_module_functions(const char *proc_name, const char *mod_nam
 		}
 	}
 
-  if (env_var && !strcmp(env_var, "1"))
+  if (env_var_debug && !strcmp(env_var_debug, "1"))
 	  fclose(fp);
 
   return 0;

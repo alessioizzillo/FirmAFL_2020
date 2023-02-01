@@ -490,42 +490,42 @@ int check_input(char * input, int len) // if all are readable charater before =
 
 int check_http_header(char * input) // if all are readable charater before =
 {   
-    if(program_id == 9925)
-    {
-        if(strncmp(input, "GET /session_login.php HTTP/1.1", 31) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    else if(program_id == 10853)
-    {
-        if(strncmp(input, "POST /HNAP1/ HTTP/1.1", 21) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+    // if(program_id == 9925)
+    // {
+    //     if(strncmp(input, "GET /session_login.php HTTP/1.1", 31) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
+    // }
+    // else if(program_id == 10853)
+    // {
+    //     if(strncmp(input, "POST /HNAP1/ HTTP/1.1", 21) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
 
-    }
-    else if(program_id == 161161)
-    {
-        if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+    // }
+    // else if(program_id == 161161)
+    // {
+    //     if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
 
-    }
-    else if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
+    // }
+    if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
     {
         return 1;
     }
@@ -665,20 +665,20 @@ void get_input(CPUState * cpu)
 #endif
 
         FILE *fp;
-        char *env_var = getenv("DEBUG");
-        if (env_var && !strcmp(env_var, "1")){
+        char *env_var_debug = getenv("DEBUG");
+        if (env_var_debug && !strcmp(env_var_debug, "1")){
             fp = fopen("debug/syscall.log","a+");
             fprintf(fp, "USER-MODE: filled recv_buffer (pc: %lx, sp: %lx)\n", pc, sp);
         }
 
         if(check_http_header(recv_buf) == 0)
         {
-            if (env_var && !strcmp(env_var, "1"))
+            if (env_var_debug && !strcmp(env_var_debug, "1"))
                 fprintf(fp, "USER-MODE: ERROR! invalid http_header. Exiting... (pc: %lx, sp: %lx)\n", pc, sp);
             //printf("recv_buf:%s\n", recv_buf);
             normal_exit(0);
         }
-        if (env_var && !strcmp(env_var, "1"))
+        if (env_var_debug && !strcmp(env_var_debug, "1"))
             fclose(fp);
     }
     else if (strcmp(feed_type, "FEED_CMD") == 0)
@@ -798,6 +798,9 @@ abi_long feed_input(int syscall_num, CPUArchState *env, int *network_handle)
 
 void feed_input(CPUState * cpu)
 {
+    char *env_var_fuzz = getenv("FUZZ");
+    char *env_var_approach = getenv("FUZZ_APPROACH");
+
     CPUArchState *env = cpu->env_ptr;
     abi_long ret = -1;
     if(strcmp(feed_type,"FEED_HTTP") == 0)
@@ -820,7 +823,7 @@ void feed_input(CPUState * cpu)
 #endif
         if((recv_syscall == 175  || recv_syscall == 3 || recv_syscall == 176) && (a0 == accept_fd) && feed_input_times == 0)
         {
-            if(program_id == 161161)
+            if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
             {
                 feed_input_times++;
             }
@@ -852,8 +855,8 @@ void feed_input(CPUState * cpu)
             target_ulong sp = env->regs[13];
 #endif
 
-            char *env_var = getenv("DEBUG");
-            if (env_var && !strcmp(env_var, "1")){
+            char *env_var_debug = getenv("DEBUG");
+            if (env_var_debug && !strcmp(env_var_debug, "1")){
                 FILE *fp= fopen("debug/syscall.log","a+");
                 fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
                     total_len, buf_read_index, rest_len, ret, pc, sp);
@@ -1059,8 +1062,8 @@ void normal_exit(int syscall_num)
     //write_aflcmd(cmd, &user_mode_time);
     write_aflcmd_complete(cmd, &user_mode_time);
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         FILE *fp= fopen("debug/syscall.log","a+");
         fprintf(fp, "USER-MODE: normal exiting...\n");
         fclose(fp);
@@ -1113,8 +1116,8 @@ void bug_exit(target_ulong addr)
     //printf("last pc:%x,CP0_UserLocal:%x\n", last_pc,env->active_tc.CP0_UserLocal);
 #endif
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         FILE *fp= fopen("debug/syscall.log","a+");
         fprintf(fp, "USER-MODE: bug exiting...\n");
         fclose(fp);
@@ -1245,6 +1248,9 @@ void exit_func(int syscall_num, int program_id)
 int state = 2;
 void exit_func(int syscall_num, int program_id)
 {
+    char *env_var_fuzz = getenv("FUZZ");
+    char *env_var_approach = getenv("FUZZ_APPROACH");
+
 #ifdef MEM_MAPPING
 #ifdef TARGET_MIPS
         if (syscall_num == 1 || syscall_num == 246)
@@ -1254,10 +1260,10 @@ void exit_func(int syscall_num, int program_id)
         {          
             normal_exit(syscall_num);
         }
-        else if(syscall_num == 142)
+        else if(syscall_num == 142 && env_var_approach && !strcmp(env_var_approach, "0"))
         {
             //add for 161161 firmware
-            if(program_id == 161161)
+            if(!strcmp(feed_type, "FEED_HTTP"))
             {
                 if(last_syscall == 142)
                 {
@@ -1301,20 +1307,15 @@ void exit_func(int syscall_num, int program_id)
         }
         else if(syscall_num == 45)
         {
-            if(program_id == 10853)
+            if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
             {
                 normal_exit(syscall_num);
-            }
-            ////add for 161161 firmware
-            if(program_id == 161161)
-            {
-                 normal_exit(syscall_num);
             }
         }
         //add for 161161 firmware
         else if(syscall_num == 3)
         {
-            if(program_id == 161161)
+            if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
             {
                 count_3++;
                 if(count_3 == 3)
@@ -1337,6 +1338,8 @@ void exit_func(int syscall_num, int program_id)
 //local_or_not 0 remote; 1 local; 2 already handled
 target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *file_opti, int *local_or_not, abi_ulong arg5)
 {  
+    char *env_var_fuzz = getenv("FUZZ");
+    char *env_var_approach = getenv("FUZZ_APPROACH");
 
 #ifdef TARGET_MIPS
     target_ulong a0 = env->active_tc.gpr[4];
@@ -1348,10 +1351,11 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     target_ulong a2 = env->regs[2];
 #endif
 
-    if(syscall_num == 45){
-        *local_or_not = 1;
-        return 0;
-    }
+    if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "1"))
+        if(syscall_num == 45){
+            *local_or_not = 1;
+            return 0;
+        }
     else if(syscall_num == 166) //nanosleep 10853
     {
         *local_or_not = 2;
@@ -1370,7 +1374,7 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     else if(syscall_num == 4 && a0 == accept_fd) //write
     {
         //add for 161161 firmware
-        if(program_id == 161161)
+        if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
         {
             normal_exit(syscall_num);
         }
@@ -3759,8 +3763,8 @@ void cpu_loop(CPUMIPSState *env)
             target_ulong sp = env->regs[13];
 #endif
 
-            char *env_var = getenv("DEBUG");
-            if (env_var && !strcmp(env_var, "1")){
+            char *env_var_debug = getenv("DEBUG");
+            if (env_var_debug && !strcmp(env_var_debug, "1")){
                 FILE *fp= fopen("debug/syscall.log","a+");
                 fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", syscall_num, pc, sp);
                 fclose(fp);
@@ -5963,8 +5967,8 @@ int main(int argc, char **argv, char **envp)
     if (stat("debug", &st) == -1)
         mkdir("debug", 0777);
 
-    char *env_var = getenv("FUZZ");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_fuzz = getenv("FUZZ");
+    if (env_var_fuzz && !strcmp(env_var_fuzz, "1")){
 #ifdef MEM_MAPPING
     cross_process_mutex_first_init(); //zyw
 

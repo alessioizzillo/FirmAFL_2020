@@ -10,7 +10,8 @@ print_usage()
     echo ""
     echo "[mode]: use one option at once"
     echo "      -r        Run emulation with qemu-system"
-    echo "      -wf       FirmAFL web fuzzing"
+    echo "      -f        FirmAFL web fuzzing"
+    echo "      -nf       NEW FirmAFL web fuzzing"
     echo "      -d        Delete firmware image emulation"
     echo "      -h        Help"
     echo ""
@@ -112,6 +113,11 @@ trap cleanup EXIT
 
 start()
 {
+    export FUZZ=0;
+    export CALLSTACK_TRACING=0;
+    export DEBUG=0;
+    export FUZZ_APPROACH=0;
+
     cd FirmAE;
 
     if ( ! ./scripts/util.py check_connection _ $PSQL_IP ); then
@@ -124,7 +130,7 @@ start()
 
     IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
     if [[ ${IID} = "" ]] || [[ ! -d scratch/${IID} ]]; then
-        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-f" ]; then
+        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]; then
             echo -e "\033[32m[+]\033[0m\033[32m[+]\033[0m FirmAE: Creating Firmware Scratch Image"
             sudo ./run.sh -c ${BRAND} ${FIRMWARE}
             IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
@@ -139,7 +145,10 @@ start()
         sudo rm -r ${WORK_DIR}/debug;
     fi
 
-    if [ ${OPTION} = "-r" ] || [ ${OPTION} = "--run" ]; then
+    if [ ${OPTION} = "-r" ]; then
+        export CALLSTACK_TRACING=1;
+        #export DEBUG=1;    # Uncomment if you want debug logs.
+
         if (egrep -sqi "true" ${WORK_DIR}/web); then
             sudo -E ./run.sh -r ${BRAND} $FIRMWARE
         elif (! egrep -sqi "false" ping); then
@@ -152,7 +161,17 @@ start()
             echo "WEB and PING ARE FALSE"
             return
         fi
-    elif [ ${OPTION} = "-f" ] || [ ${OPTION} = "--fuzz" ]; then    
+    elif [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]; then
+        export FUZZ=1;
+        #export CALLSTACK_TRACING=1;
+        #export DEBUG=1;    # Uncomment if you want debug logs.
+        if [ ${OPTION} = "-nf" ]; then
+            echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: NEW"
+            export FUZZ_APPROACH=1;
+        else
+            echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: ORIGINAL"
+        fi
+
         # First check on the firmware correctness for fuzzing
         # NORMAL Case where PING is TRUE, WEB is TRUE.
         if (egrep -sqi "true" ${WORK_DIR}/web); then
@@ -238,10 +257,6 @@ start()
             # Some configuration lines of the fuzzer
             echo core | sudo tee /proc/sys/kernel/core_pattern;
             export AFL_SKIP_CPUFREQ=1;
-            export FUZZ=1;
-            export DEBUG=0;
-
-            export DEBUG=1;    # Uncomment if you want debug logs.
 
             TARGET_PROGRAM_PATH=${TARGET_PROGRAM_PATH%%[[:space:]]*}
             TARGET_PROGRAM_PATH="${TARGET_PROGRAM_PATH:1}"
@@ -266,12 +281,6 @@ start()
 
     fi
 
-
-
-
-
-
-    
     cd ..
 }
 

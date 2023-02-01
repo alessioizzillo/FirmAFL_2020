@@ -485,42 +485,42 @@ int check_input(char * input, int len) // if all are readable charater before =
 
 int check_http_header(char * input) // if all are readable charater before =
 {   
-    if(program_id == 9925)
-    {
-        if(strncmp(input, "GET /session_login.php HTTP/1.1", 31) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    else if(program_id == 10853)
-    {
-        if(strncmp(input, "POST /HNAP1/ HTTP/1.1", 21) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+    // if(program_id == 9925)
+    // {
+    //     if(strncmp(input, "GET /session_login.php HTTP/1.1", 31) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
+    // }
+    // else if(!strcmp(feed_type, "FEED_HTTP"))
+    // {
+    //     if(strncmp(input, "POST /HNAP1/ HTTP/1.1", 21) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
 
-    }
-    else if(program_id == 161161)
-    {
-        if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+    // }
+    // else if(program_id == 161161)
+    // {
+    //     if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
+    //     {
+    //         return 1;
+    //     }
+    //     else
+    //     {
+    //         return 0;
+    //     }
 
-    }
-    else if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
+    // }
+    if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
     {
         return 1;
     }
@@ -1088,15 +1088,15 @@ static void callbacktests_loadmodule_callback(VMI_Callback_Params* params)
 
     int status = VMI_find_process_by_cr3_all(params->cp.cr3, procname, 64, &pid, &par_pid);
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         FILE *module_file = fopen("debug/execution_module_list.log","a+");
         fprintf(module_file, "%s:::%s\n", procname, params->lm.name);
         fclose(module_file);
     }
 
-    env_var = getenv("CALLSTACK_TRACING");
-    if (env_var && !strcmp(env_var, "1") && !strcmp(program_analysis, ""))
+    char *env_var_callstack_tracing = getenv("CALLSTACK_TRACING");
+    if (env_var_callstack_tracing && !strcmp(env_var_callstack_tracing, "1") && !strcmp(program_analysis, ""))
         getconfig("program_analysis", program_analysis);
 
 #if defined(FUZZ) || defined(MEM_MAPPING)
@@ -1259,8 +1259,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     int tb_exit;
     uint8_t *tb_ptr = itb->tc_ptr;
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         if (itb->pc < 0x70000000){
             FILE *fp= fopen("debug/syscall.log","a+");
             fprintf(fp, "SYSTEM-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
@@ -2028,6 +2028,8 @@ int state = 2;
 int count_syscall = 0;
 int determine_if_end(int program_id)
 {
+    char *env_var_approach = getenv("FUZZ_APPROACH");
+
     count_syscall++;
 #ifdef TARGET_MIPS
     if(into_syscall == 4001 || into_syscall == 4246){  //mips, arm32
@@ -2035,33 +2037,35 @@ int determine_if_end(int program_id)
     }
     else if(into_syscall == 4142)
     {
-        if(program_id == 161161)
-        {
-            if(last_syscall == 4142)
+        char *env_var_fuzz = getenv("FUZZ");
+        if (env_var_fuzz && !strcmp(env_var_fuzz, "1")){
+            if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
             {
-                last_syscall = 0;
+                if(last_syscall == 4142)
+                {
+                    last_syscall = 0;
+                    return 1;
+                }
+            }
+            /*
+            else if(state == 2 && count_syscall<=5)
+            {
+                state++;
+            }
+            */
+            else if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
+            {
+                state++;
+            }   
+            else
+            {
+                state = 2;
+                count_syscall = 0;
+                if(sys_trace_fp)
+                    fprintf(sys_trace_fp,"%d\n", into_syscall - 4000);
                 return 1;
             }
         }
-        /*
-        else if(state == 2 && count_syscall<=5)
-        {
-            state++;
-        }
-        */
-        else if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
-        {
-            state++;
-        }   
-        else
-        {
-            state = 2;
-            count_syscall = 0;
-            if(sys_trace_fp)
-                fprintf(sys_trace_fp,"%d\n", into_syscall - 4000);
-        	return 1;
-        }
-        
     }
     else if(into_syscall == 4188) 
     {
@@ -2087,7 +2091,7 @@ int determine_if_end(int program_id)
     }
     else if(into_syscall == 4003)
     {
-        if(program_id == 161161)
+        if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
         {
             count_3++;
             if(count_3 == 3)
@@ -2101,12 +2105,7 @@ int determine_if_end(int program_id)
 
     else if(into_syscall == 4045)
     {
-        if(program_id == 10853)
-        {
-            return 1;
-        }
-        
-        if(program_id == 161161)
+        if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
         {
             return 1;
         }
@@ -2125,7 +2124,7 @@ int determine_if_end(int program_id)
     if(into_syscall == 1 || into_syscall == 248){  //arm32
         return 1;
     }
-    else if(into_syscall == 142 || into_syscall == 168) // new_select poll
+    else if((into_syscall == 142 && !strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0")) || into_syscall == 168) // new_select poll
     {
         return 1;
     }
@@ -2426,8 +2425,8 @@ int specify_fork_pc(CPUState *cpu)
 int start_fork(CPUState *cpu, target_ulong pc)
 {
 
-    char *env_var = getenv("DEBUG");
-    if (env_var && !strcmp(env_var, "1")){
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1")){
         FILE *fp= fopen("debug/syscall.log","a+");
         fprintf(fp, "START FORK!\n\n");
         fclose(fp);
@@ -2604,7 +2603,7 @@ int feed_input_helper(CPUState *cpu, target_ulong pc)
 int feed_input_times = 0;
 int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_num) //after recv
 {
-
+    char *env_var_approach = getenv("FUZZ_APPROACH");
     CPUArchState *env = cpu->env_ptr;
 #ifdef TARGET_MIPS
     int a0 = env->active_tc.gpr[4];
@@ -2631,7 +2630,7 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
 #endif
         int final_recv_len = 0;
         //161161
-        if(program_id == 161161)
+        if(!strcmp(feed_type, "FEED_HTTP") && env_var_approach && !strcmp(env_var_approach, "0"))
         {
             feed_input_times++;
         }
@@ -2658,8 +2657,8 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
         target_ulong sp = env->regs[13];
 #endif
 
-        char *env_var = getenv("DEBUG");
-        if (env_var && !strcmp(env_var, "1")){
+        char *env_var_debug = getenv("DEBUG");
+        if (env_var_debug && !strcmp(env_var_debug, "1")){
             FILE *fp= fopen("debug/syscall.log","a+");
             fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, len: %d, final_recv_len: %d) (pc: %lx, sp: %lx)\n", 
                 total_len, buf_read_index, rest_len, len, final_recv_len, pc, sp);
@@ -2964,8 +2963,8 @@ exit:
         int tb_exit = 0;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
-        char *env_var = getenv("FUZZ");
-        if (env_var && !strcmp(env_var, "1")){
+        char *env_var_fuzz = getenv("FUZZ");
+        if (env_var_fuzz && !strcmp(env_var_fuzz, "1")){
 skip_to_pos:
             assert(1==1);
 
@@ -3237,8 +3236,8 @@ skip_to_pos:
                 target_ulong sp = env->regs[13];
 #endif
 
-                char *env_var = getenv("DEBUG");
-                if (env_var && !strcmp(env_var, "1")){
+                char *env_var_debug = getenv("DEBUG");
+                if (env_var_debug && !strcmp(env_var_debug, "1")){
                     FILE *fp= fopen("debug/syscall.log","a+");
                     fprintf(fp, "SYSTEM-MODE: after syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", into_syscall, pc, sp);
                     fclose(fp);
