@@ -48,7 +48,7 @@ int sys_count = 0;
 
 int CP0_UserLocal = 0;
 
-
+int last_program_analysis_cr3 = 0;
 
 #include "zyw_config1.h"
 #include "zyw_config2.h"
@@ -1047,7 +1047,12 @@ static void function_return_callback(void *opaque)
     if (!CALLSTACK_function_return(callstack, info_return->cr3, sp))
         hookapi_remove_hook(info_return->handle);
 
-    CALLSTACK_dump_process(callstack, info_return->cr3, sp);
+    char file_name[50];
+    memset(file_name, 0, sizeof(file_name));
+    sprintf(file_name, "debug/exec_calltrace_%d", info_return->cr3);
+	FILE *fd = fopen(file_name,"a+");
+    CALLSTACK_dump_process(fd, callstack, info_return->cr3);
+    fclose(fd);
 
     free(info_return);
 }
@@ -1076,7 +1081,13 @@ static void function_enter_callback(void *opaque)
     info_return->handle = hookapi_hook_return(ret_addr, function_return_callback, info_return, sizeof(func_info_return));
 
     CALLSTACK_function_enter(callstack, info_enter->cr3, sp, info_enter->module_name, info_enter->func_name, info_return->handle); 
-    CALLSTACK_dump_process(callstack, info_enter->cr3, sp);
+    
+    char file_name[50];
+    memset(file_name, 0, sizeof(file_name));
+    sprintf(file_name, "debug/exec_calltrace_%d", info_enter->cr3);
+	FILE *fd = fopen(file_name,"a+");
+    CALLSTACK_dump_process(fd, callstack, info_enter->cr3);
+    fclose(fd);
 }
 
 
@@ -1100,8 +1111,10 @@ static void callbacktests_loadmodule_callback(VMI_Callback_Params* params)
         getconfig("program_analysis", program_analysis);
 
 #if defined(FUZZ) || defined(MEM_MAPPING)
-    if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL)
+    if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL){
+        last_program_analysis_cr3 = params->cp.cr3;
         hookapi_hook_all_module_functions(procname, params->lm.name, 1, params->lm.cr3, function_enter_callback);
+    }
 #endif
 }
 
@@ -1638,6 +1651,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             cpu->exception_index = -1;
             return true;
 #else
+
             if (replay_exception()) {
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 qemu_mutex_lock_iothread();
@@ -2819,6 +2833,41 @@ int cpu_exec(CPUState *cpu)
     }
 #endif
 */
+
+#ifdef TARGET_MIPS
+    target_ulong syscall_nr = env->active_tc.gpr[2];
+    target_ulong pc = env->active_tc.PC;
+    target_ulong a0 = env->active_tc.gpr[4];
+    target_ulong a1 = env->active_tc.gpr[5]; 
+    target_ulong a2 = env->active_tc.gpr[6];
+    target_ulong a3 = env->active_tc.gpr[7];
+#elif defined(TARGET_ARM)
+    target_ulong syscall_nr = env->regs[7];
+    target_ulong pc = env->regs[15];
+    target_ulong a0 = env->regs[0];
+    target_ulong a1 =env->regs[1];
+    target_ulong a2 = env->regs[2];
+    target_ulong a3 = env->regs[3];
+#endif
+
+    char *env_var_debug = getenv("DEBUG");
+    if (env_var_debug && !strcmp(env_var_debug, "1") && cpu->exception_index == 17){
+        char buf_a1[500];
+        memset(buf_a1,0,500);
+        DECAF_read_mem(cpu, a1, 499, buf_a1);
+        FILE *fd= fopen("debug/syscall.log","a+");
+        if (syscall_nr == 4175 || syscall_nr == 4003 || syscall_nr == 4176){
+            fprintf(fd, "\nSYSTEM-MODE (syscall tracing): SYSCALL %d (pc: %lx)", syscall_nr, pc);
+            fprintf(fd, " (a0: %d, a1: %s, a2: %d, a3: %d)\n", a0, buf_a1, a2, a3);
+            char *env_var_callstack_tracing = getenv("CALLSTACK_TRACING");
+            if (env_var_callstack_tracing && !strcmp(env_var_callstack_tracing, "1"))
+                CALLSTACK_dump_process(fd, callstack, last_program_analysis_cr3);
+            fprintf(fd, "\n\n");
+        }
+        fclose(fd);
+    }
+
+
 #ifdef TARGET_MIPS
     if(cpu->exception_index == 17 && env->active_tc.gpr[2] == 4283)
     {
@@ -3231,15 +3280,21 @@ skip_to_pos:
 #ifdef TARGET_MIPS
                 target_ulong pc = env->active_tc.PC;
                 target_ulong sp = env->active_tc.gpr[29];
+                target_ulong a2 = env->active_tc.gpr[6];
 #elif defined(TARGET_ARM)
                 target_ulong pc = env->pc;
                 target_ulong sp = env->regs[13];
+                target_ulong a2 = env->regs[2];
 #endif
 
                 char *env_var_debug = getenv("DEBUG");
                 if (env_var_debug && !strcmp(env_var_debug, "1")){
                     FILE *fp= fopen("debug/syscall.log","a+");
-                    fprintf(fp, "SYSTEM-MODE: after syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", into_syscall, pc, sp);
+                    fprintf(fp, "SYSTEM-MODE (AFL): after syscall %d to process in system-mode (pc: %lx, sp: %lx)", into_syscall, pc, sp);
+                    if (into_syscall == 4175)
+                        fprintf(fp, " (len: %d)\n", a2);
+                    else
+                        fprintf(fp, "\n");
                     fclose(fp);
                 }
 

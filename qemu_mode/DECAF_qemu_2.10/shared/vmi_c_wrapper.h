@@ -120,7 +120,7 @@ typedef struct CallStack
 
 int CALLSTACK_function_enter(CallStack *callstack, target_ulong cr3, target_ulong cur_sp, char *module_name, char *func_name, uintptr_t return_hook_handle);
 int CALLSTACK_function_return(CallStack *callstack, target_ulong cr3, target_ulong cur_sp);
-int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong cur_sp);
+int CALLSTACK_dump_process(FILE *fd, CallStack *callstack, target_ulong cr3);
 ProcessCallStack * CALLSTACK_get_pcs_by_cr3(CallStack *callstack, target_ulong cr3);
 int CALLSTACK_prune_callstack(ProcessCallStack *pcs, target_ulong cur_sp);
 

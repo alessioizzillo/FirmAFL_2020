@@ -3758,15 +3758,21 @@ void cpu_loop(CPUMIPSState *env)
 #ifdef TARGET_MIPS
             target_ulong pc = env->active_tc.PC;
             target_ulong sp = env->active_tc.gpr[29];
+            target_ulong a2 = env->active_tc.gpr[6];
 #elif defined(TARGET_ARM)
             target_ulong pc = env->pc;
             target_ulong sp = env->regs[13];
+            target_ulong a2 = env->regs[2];
 #endif
 
             char *env_var_debug = getenv("DEBUG");
             if (env_var_debug && !strcmp(env_var_debug, "1")){
                 FILE *fp= fopen("debug/syscall.log","a+");
-                fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)\n", syscall_num, pc, sp);
+                fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)", syscall_num, pc, sp);
+                if (syscall_num == 175)
+                    fprintf(fp, " (len: %d)\n", a2);
+                else
+                    fprintf(fp, "\n");
                 fclose(fp);
             }
 

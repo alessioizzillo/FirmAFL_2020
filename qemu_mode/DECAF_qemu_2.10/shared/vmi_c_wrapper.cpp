@@ -387,7 +387,7 @@ int CALLSTACK_function_return(CallStack *callstack, target_ulong cr3, target_ulo
 }
 
 
-int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong cur_sp){
+int CALLSTACK_dump_process(FILE *fd, CallStack *callstack, target_ulong cr3){
 	int len = 1;
 	FunctionCall* fc;
     ProcessCallStack *pcs = CALLSTACK_get_pcs_by_cr3(callstack, cr3);
@@ -395,12 +395,6 @@ int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong 
 	if (!pcs || !(pcs->fc_stack_top))
 		return -1;
 	else {
-		char file_name[50];
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "debug/exec_calltrace_%d", cr3);
-
-		FILE *fd = fopen(file_name,"a+");
-
 		fc = pcs->fc_stack_top;
 		while (fc){
 			if (fc->next)
@@ -411,7 +405,6 @@ int CALLSTACK_dump_process(CallStack *callstack, target_ulong cr3, target_ulong 
 			fc = fc->next;
 		}
 		fprintf(fd, "\n");
-		fclose(fd);
 	}
 
     return 0;
