@@ -37,8 +37,10 @@ function get_option()
         echo "analyze"
     elif [ ${OPTION} = "-r" ] || [ ${OPTION} = "--run" ]; then
         echo "run"
-    elif [ ${OPTION} = "-f" ] || [ ${OPTION} = "--fuzz" ]; then
-        echo "fuzz"
+    elif [ ${OPTION} = "-f" ] || [ ${OPTION} = "--firmafl" ]; then
+        echo "firmafl"
+    elif [ ${OPTION} = "-e" ] || [ ${OPTION} = "--equafl" ]; then
+        echo "equafl"
     elif [ ${OPTION} = "-d" ] || [ ${OPTION} = "--debug" ]; then
         echo "debug"
     elif [ ${OPTION} = "-b" ] || [ ${OPTION} = "--boot" ]; then
@@ -203,6 +205,8 @@ function run_emulation()
         ln -s ./run.sh ${WORK_DIR}/run_debug.sh | true
         ln -s ./run.sh ${WORK_DIR}/run_analyze.sh | true
         ln -s ./run.sh ${WORK_DIR}/run_boot.sh | true
+        ln -s ./run.sh ${WORK_DIR}/run_firmafl.sh | true
+        ln -s ./run.sh ${WORK_DIR}/run_equafl.sh | true
 
         t_end="$(date -u +%s.%N)"
         time_network="$(bc <<<"$t_end-$t_start")"
@@ -281,12 +285,18 @@ function run_emulation()
         # ================================
         check_network ${IP} false &
         ${WORK_DIR}/run.sh
-    elif [ ${OPTION} = "fuzz" ]; then
+    elif [ ${OPTION} = "firmafl" ]; then
         # ================================
-        # just fuzz mode
+        # just firmafl mode
         # ================================
         check_network ${IP} false &
-        ${WORK_DIR}/run.sh
+        ${WORK_DIR}/run_firmafl.sh
+    elif [ ${OPTION} = "equafl" ]; then
+        # ================================
+        # just equafl mode
+        # ================================
+        check_network ${IP} false &
+        ${WORK_DIR}/run_equafl.sh
     elif [ ${OPTION} = "boot" ]; then
         # ================================
         # boot debug mode

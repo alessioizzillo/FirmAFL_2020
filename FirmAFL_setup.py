@@ -31,13 +31,6 @@ def config_creation(feed_type):
 		web_service = file_web.read()
 		file_web.close()
 		f.write("program_analysis="+web_service.split("/")[-1]+"\n")
-	
-		# Extract target program and lib directory
-		os.system("tar -xvf FirmAE/images/%s.tar.gz .%s" % (firm_id, web_service))
-		os.system("mv %s %s" % (web_service.split("/")[1], firm_dir))
-		os.system("tar -xvf FirmAE/images/%s.tar.gz ./lib" % (firm_id))
-		os.system("mv ./lib %s" % (firm_dir))
-
 		print("\033[32m[+]\033[0m Program Analysis: "+web_service+" (web service)")
 	else:
 		f.write("program_analysis=NotRecognized!!\n")
@@ -96,6 +89,9 @@ else:
 # Fuzzing_Config_File Creation (Default FEED_HTTP for Web Server)
 config_creation(feed_type)
 
+# Extract target program and lib directory
+os.system("tar -xvf FirmAE/images/%s.tar.gz -C %s" % (firm_id, firm_dir))
+
 # Default Keywords File (Dictionary for AFL)
 keywords_src = "FirmAFL_config/keywords"
 cmd.append("cp %s %s" %(keywords_src, dst))
@@ -129,10 +125,6 @@ cmd.append("cp %s %s" %(vgabios_bin, dst))
 cmd.append("cp %s %s" %(efi_bin, dst))
 
 chroot_creation(cmd)
-
-# Soft link to /dev/null and /dev/urandom
-cmd.append("mkdir -p %s/dev" % firm_dir)
-cmd.append("mount --bind /dev %s/dev" % firm_dir)
 
 for i in range(0, len(cmd)):
 	os.system(cmd[i])

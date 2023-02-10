@@ -80,8 +80,11 @@ auto_find_brand() {
 }
 
 
-# Cleanup Process and interfaces before exiting
+# Cleanup Process and interfaces
 cleanup() {
+    sudo umount FirmAE/${WORK_DIR}/dev/null;
+    sudo umount FirmAE/${WORK_DIR}/dev/urandom;
+
     echo -e "\033[33m[*]\033[0m Start Exiting Procedure.."
     echo -e "\033[33m[+]\033[0m Killing Qemu if active"
     
@@ -106,11 +109,15 @@ cleanup() {
     echo -e "\033[32m[+]\033[0m ..End"
 
     pkill -TERM -P $$ --signal 9;
+}
 
+# Cleanup Process and interfaces before exiting
+cleanup_exit() {
+    cleanup
     exit
 }
 
-trap cleanup EXIT
+trap cleanup_exit EXIT
 
 start()
 {
@@ -146,9 +153,18 @@ start()
         sudo rm -r ${WORK_DIR}/debug;
     fi
 
+    cleanup
+
+    # Bind mount to /dev/null and /dev/urandom
+    mkdir ${WORK_DIR}/dev 2>&1 > /dev/null;
+    touch ${WORK_DIR}/dev/null 2>&1 > /dev/null;
+    mount --bind /dev/null ${WORK_DIR}/dev/null;
+    touch ${WORK_DIR}/dev/urandom 2>&1 > /dev/null;
+    mount --bind /dev/urandom ${WORK_DIR}/dev/urandom;
+
     if [ ${OPTION} = "-r" ]; then
-        export CALLSTACK_TRACING=1;
-        #export DEBUG=1;    # Uncomment if you want debug logs.
+        #export CALLSTACK_TRACING=1;
+        export DEBUG=1;    # Uncomment if you want debug logs.
 
         if (egrep -sqi "true" ${WORK_DIR}/web); then
             sudo -E ./run.sh -r ${BRAND} $FIRMWARE
@@ -163,8 +179,20 @@ start()
         fi
     
     elif [ ${OPTION} = "-t" ]; then
-        export CALLSTACK_TRACING=1;
-        #export DEBUG=1;    # Uncomment if you want debug logs.
+        #export CALLSTACK_TRACING=1;
+        export DEBUG=1;    # Uncomment if you want debug logs.
+
+        # Retrieve ip addresses of the firmware, to do later the print
+        IPS=()
+        if (egrep -sq true isDhcp); then
+            IPS+=("127.0.0.1")
+        else
+            IP_NUM=`cat ip_num`
+            for (( IDX=0; IDX<${IP_NUM}; IDX++ ))
+            do
+                IPS+=(`cat ip.${IDX}`)
+            done
+        fi
 
         if (egrep -sqi "true" ${WORK_DIR}/web); then
             sudo -E ./run.sh -r ${BRAND} $FIRMWARE 2>&1 > ${WORK_DIR}/run_emulation.log &
@@ -177,10 +205,16 @@ start()
             echo "WEB and PING ARE FALSE"
             return
         fi
-        echo -e "\033[33m[*]\033[0m Let's wait 30 seconds...\n"
-        sleep 30
+        echo -e "\033[33m[*]\033[0m Let's wait 60 seconds...\n"
+        sleep 60
         cd ..
-        python3 curl.py
+        echo -e "\033[33m[*]\033[0m Trying to connect to the web server..."
+        for (( IDX=0; IDX<${IP_NUM}; IDX++ ))
+        do
+            echo "http://${IPS[${IDX}]}";
+            python3 curl.py ${IPS[${IDX}]};
+        done
+        echo ""
         cd -
         echo -e "\033[33m[*]\033[0m Let's wait 30 seconds...\n"
         sleep 30
@@ -188,7 +222,7 @@ start()
     elif [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]; then
         export FUZZ=1;
         #export CALLSTACK_TRACING=1;
-        #export DEBUG=1;    # Uncomment if you want debug logs.
+        export DEBUG=1;    # Uncomment if you want debug logs.
         if [ ${OPTION} = "-nf" ]; then
             echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: NEW"
             export FUZZ_APPROACH=1;
@@ -204,10 +238,10 @@ start()
             echo -e "\033[33m[*]\033[0m Emulation Log -> ${WORK_DIR}/run_emulation.log \n"
             
             # First I start qemu-system mode of the firmware and put it in background
-            sudo -E ./run.sh -f ${BRAND} $FIRMWARE 2>&1 > ${WORK_DIR}/run_emulation.log &
+            sudo -E ./run_firmafl.sh -f ${BRAND} $FIRMWARE 2>&1 > ${WORK_DIR}/run_emulation.log &
             pid=$!
-            echo -e "\033[33m[*]\033[0m Let's wait 30 seconds...\n"
-            sleep 30
+            echo -e "\033[33m[*]\033[0m Let's wait 60 seconds...\n"
+            sleep 60
             count=$(ps -A| grep $pid |wc -l) # Check whether process is still running
 
             if [[ $count -eq 0 ]]; then 
@@ -232,13 +266,12 @@ start()
             fi
 
             echo -e "\033[33m[*]\033[0m Trying to connect to the web server..."
-            if curl --max-time 2 --output /dev/null --silent http://${IP_NUM}; then
-                echo -e "\033[33m[*]\033[0m Trying AGAIN to connect to the web server..."
-                if curl --max-time 2 --output /dev/null --silent https://${IP_NUM}; then
-                    echo -e "\033[31m[-]\033[0m The web server cannot be reached!"
-                    exit
-                fi
-            fi
+            for (( IDX=0; IDX<${IP_NUM}; IDX++ ))
+            do
+                echo "http://${IPS[${IDX}]}";
+                curl --max-time 2 --output /dev/null --silent http://${IPS[${IDX}]};
+            done
+            echo ""
 
             echo -e "\033[33m[*]\033[0m Let's wait 5 seconds...\n"
             sleep 5

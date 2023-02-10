@@ -1272,14 +1272,14 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     int tb_exit;
     uint8_t *tb_ptr = itb->tc_ptr;
 
-    char *env_var_debug = getenv("DEBUG");
-    if (env_var_debug && !strcmp(env_var_debug, "1")){
-        if (itb->pc < 0x70000000){
-            FILE *fp= fopen("debug/syscall.log","a+");
-            fprintf(fp, "SYSTEM-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
-            fclose(fp);
-        }
-    }
+    // char *env_var_debug = getenv("DEBUG");
+    // if (env_var_debug && !strcmp(env_var_debug, "1")){
+    //     if (itb->pc < 0x70000000){
+    //         FILE *fp= fopen("debug/syscall.log","a+");
+    //         fprintf(fp, "SYSTEM-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
+    //         fclose(fp);
+    //     }
+    // }
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [%d: " TARGET_FMT_lx "] %s\n",
@@ -2856,7 +2856,7 @@ int cpu_exec(CPUState *cpu)
         memset(buf_a1,0,500);
         DECAF_read_mem(cpu, a1, 499, buf_a1);
         FILE *fd= fopen("debug/syscall.log","a+");
-        if (syscall_nr == 4175 || syscall_nr == 4003 || syscall_nr == 4176){
+        if (syscall_nr == 4175 || syscall_nr == 4003 || syscall_nr == 4176 || syscall_nr == 4168 || syscall_nr == 4183){
             fprintf(fd, "\nSYSTEM-MODE (syscall tracing): SYSCALL %d (pc: %lx)", syscall_nr, pc);
             fprintf(fd, " (a0: %d, a1: %s, a2: %d, a3: %d)\n", a0, buf_a1, a2, a3);
             char *env_var_callstack_tracing = getenv("CALLSTACK_TRACING");
@@ -3290,7 +3290,7 @@ skip_to_pos:
                 char *env_var_debug = getenv("DEBUG");
                 if (env_var_debug && !strcmp(env_var_debug, "1")){
                     FILE *fp= fopen("debug/syscall.log","a+");
-                    fprintf(fp, "SYSTEM-MODE (AFL): after syscall %d to process in system-mode (pc: %lx, sp: %lx)", into_syscall, pc, sp);
+                    fprintf(fp, "SYSTEM-MODE (after start fork): after syscall %d to process in system-mode (pc: %lx, sp: %lx)", into_syscall, pc, sp);
                     if (into_syscall == 4175)
                         fprintf(fp, " (len: %d)\n", a2);
                     else

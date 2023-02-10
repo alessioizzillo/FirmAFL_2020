@@ -60,7 +60,8 @@ if [ -f ./images/${IID}.kernel ]; then
 fi
 
 if [ -d ./scratch/${IID}/ ]; then
-    sudo umount ./scratch/${IID}/dev
+    sudo umount ./scratch/${IID}/dev/null;
+    sudo umount ./scratch/${IID}/dev/urandom;
     sudo rm -r ./scratch/${IID}/
 fi
 

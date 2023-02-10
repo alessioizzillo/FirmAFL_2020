@@ -57,6 +57,12 @@ fi
 QEMU=./`get_qemu ${ARCHEND}`
 KERNEL=`get_kernel ${ARCHEND}`
 
+if (echo ${RUN_MODE} | grep -q "firmafl\|equafl"); then
+    echo -e "Using DECAF kernel"
+    KERNEL=`get_decaf_kernel ${ARCHEND}`
+    echo -e ""
+fi
+
 QEMU_MACHINE=`get_qemu_machine ${ARCHEND}`
 QEMU_ROOTFS=`get_qemu_disk ${ARCHEND}`
 WORK_DIR=`get_scratch ${IID}`
@@ -83,14 +89,28 @@ del_partition ${DEVICE:0:$((${#DEVICE}-2))}
 %(START_NET)s
 
 cd ${WORK_DIR}
-echo -e "Starting emulation of firmware...\n"
-%(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
-    %(QEMU_DISK)s -append "root=${QEMU_ROOTFS} console=ttyS0 nandsim.parts=64,64,64,64,64,64,64,64,64,64 %(QEMU_INIT)s rw debug ignore_loglevel print-fatal-signals=1 FIRMAE_NET=${FIRMAE_NET} FIRMAE_NVRAM=${FIRMAE_NVRAM} FIRMAE_KERNEL=${FIRMAE_KERNEL} FIRMAE_ETC=${FIRMAE_ETC} ${QEMU_DEBUG}" \\
-    -serial file:qemu.final.serial.log \\
-    -serial unix:/tmp/qemu.${IID}.S1,server,nowait \\
-    -monitor unix:/tmp/qemu.${IID},server,nowait \\
-    -display none \\
-    %(QEMU_NETWORK)s | true
+echo -e "Starting emulation of firmware..."
+echo -e ""
+
+if (echo ${RUN_MODE} | grep -q "equafl"); then
+    echo -e "Changing root directory..."
+    echo -e ""
+    chroot . %(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
+        %(QEMU_DISK)s -append "root=${QEMU_ROOTFS} console=ttyS0 nandsim.parts=64,64,64,64,64,64,64,64,64,64 %(QEMU_INIT)s rw debug ignore_loglevel print-fatal-signals=1 FIRMAE_NET=${FIRMAE_NET} FIRMAE_NVRAM=${FIRMAE_NVRAM} FIRMAE_KERNEL=${FIRMAE_KERNEL} FIRMAE_ETC=${FIRMAE_ETC} ${QEMU_DEBUG}" \\
+        -serial file:qemu.final.serial.log \\
+        -serial unix:/tmp/qemu.${IID}.S1,server,nowait \\
+        -monitor unix:/tmp/qemu.${IID},server,nowait \\
+        -display none \\
+        %(QEMU_NETWORK)s | true
+else
+    %(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
+        %(QEMU_DISK)s -append "root=${QEMU_ROOTFS} console=ttyS0 nandsim.parts=64,64,64,64,64,64,64,64,64,64 %(QEMU_INIT)s rw debug ignore_loglevel print-fatal-signals=1 FIRMAE_NET=${FIRMAE_NET} FIRMAE_NVRAM=${FIRMAE_NVRAM} FIRMAE_KERNEL=${FIRMAE_KERNEL} FIRMAE_ETC=${FIRMAE_ETC} ${QEMU_DEBUG}" \\
+        -serial file:qemu.final.serial.log \\
+        -serial unix:/tmp/qemu.${IID}.S1,server,nowait \\
+        -monitor unix:/tmp/qemu.${IID},server,nowait \\
+        -display none \\
+        %(QEMU_NETWORK)s | true
+fi
 cd -
 
 %(STOP_NET)s

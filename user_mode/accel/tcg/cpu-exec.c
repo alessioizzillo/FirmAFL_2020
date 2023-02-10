@@ -163,14 +163,14 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     AFL_QEMU_CPU_SNIPPET2;
 #endif
 */
-    char *env_var_debug = getenv("DEBUG");
-    if (env_var_debug && !strcmp(env_var_debug, "1")){
-        if (itb->pc < 0x70000000){
-            FILE *fp= fopen("debug/syscall.log","a+");
-            fprintf(fp, "USER-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
-            fclose(fp);
-        }
-    }
+    // char *env_var_debug = getenv("DEBUG");
+    // if (env_var_debug && !strcmp(env_var_debug, "1")){
+    //     if (itb->pc < 0x70000000){
+    //         FILE *fp= fopen("debug/syscall.log","a+");
+    //         fprintf(fp, "USER-MODE: HTTPD (pc: 0x%lx)\n", itb->pc);
+    //         fclose(fp);
+    //     }
+    // }
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [%d: " TARGET_FMT_lx "] %s\n",

@@ -858,7 +858,7 @@ void feed_input(CPUState * cpu)
             char *env_var_debug = getenv("DEBUG");
             if (env_var_debug && !strcmp(env_var_debug, "1")){
                 FILE *fp= fopen("debug/syscall.log","a+");
-                fprintf(fp, "SYSTEM-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
+                fprintf(fp, "USER-MODE: written recv package (total_len: %d, buf_read_index: %d, rest_len: %d, ret: %d) (pc: %lx, sp: %lx)\n", 
                     total_len, buf_read_index, rest_len, ret, pc, sp);
                 fclose(fp);
             }
@@ -3768,7 +3768,7 @@ void cpu_loop(CPUMIPSState *env)
             char *env_var_debug = getenv("DEBUG");
             if (env_var_debug && !strcmp(env_var_debug, "1")){
                 FILE *fp= fopen("debug/syscall.log","a+");
-                fprintf(fp, "USER-MODE: syscall %d to process in system-mode (pc: %lx, sp: %lx)", syscall_num, pc, sp);
+                fprintf(fp, "USER-MODE: SYSCALL %d to process in system-mode (pc: %lx, sp: %lx)", syscall_num, pc, sp);
                 if (syscall_num == 175)
                     fprintf(fp, " (len: %d)\n", a2);
                 else

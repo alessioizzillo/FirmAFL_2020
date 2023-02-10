@@ -62,6 +62,9 @@ if (${FIRMAE_ETC}); then
     elif [ -e /usr/sbin/httpd ]; then
         echo -n "/usr/sbin/httpd" > /firmadyne/service
         echo -n "httpd" > /firmadyne/service_name
+    elif [ -e /sbin/httpd ]; then
+        echo -n "/sbin/httpd" > /firmadyne/service
+        echo -n "httpd" > /firmadyne/service_name
     elif [ -e /bin/goahead ]; then
         echo -n "/bin/goahead" > /firmadyne/service
         echo -n "goahead" > /firmadyne/service_name
