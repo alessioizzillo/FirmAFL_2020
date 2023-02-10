@@ -2342,33 +2342,45 @@ int determine_if_network_recv(int program_id, CPUState *cpu, target_ulong sys_ca
 
 //#ifdef AUTO_FIND_FORK_PC
     CPUArchState *env = cpu->env_ptr;
-#ifdef TARGET_ARM
-    int exception_num = 2;
-    int arg_0 = env->regs[0];
-    int read_syscall = 3;
-    int recv_syscall = 291;
-    int recvfrom_syscall = 292;
-#elif defined(TARGET_MIPS)
+#ifdef TARGET_MIPS
     int exception_num = 17;
-    int arg_0 = env->active_tc.gpr[4];
     int read_syscall = 4003;
     int recv_syscall = 4175;
     int recvfrom_syscall = 4176;
+    int a0 = env->active_tc.gpr[4];
+    int a1 = env->active_tc.gpr[5]; 
+    int a2 = env->active_tc.gpr[6];
+    int a3 = env->active_tc.gpr[7];
+#elif defined(TARGET_ARM)
+    int exception_num = 2;
+    int read_syscall = 3;
+    int recv_syscall = 291;
+    int recvfrom_syscall = 292;
+    target_ulong a0 = env->regs[0];
+    target_ulong a1 = env->regs[1];
+    target_ulong a2 = env->regs[2];
+    target_ulong a3 = env->regs[3];
 #endif
 
     if(target_pgd != 0 && start_fork_pc == 0)
     {
         if (sys_call_num == read_syscall || sys_call_num == recv_syscall || sys_call_num == recvfrom_syscall)
         {
-            if(accept_fd == arg_0 && accept_fd!=0) 
-            {
-                target_ulong pgd = DECAF_getPGD(cpu);
-                if(pgd == target_pgd)                        
-                {
-                    DECAF_printf("determine_if_network_recv:%d,%d\n",arg_0, accept_fd);
-                    handle_recv = 1;
-                    return 1;//goto skip_to_pos;
+            char buf[4096];
+            memset(buf, 0, 4096);
+            DECAF_read_mem(cpu, a1, a2, buf);
 
+            if (!strstr(buf, "GET") || !strstr(buf, "POST")){
+                if(accept_fd == a0 && accept_fd!=0) 
+                {
+                    target_ulong pgd = DECAF_getPGD(cpu);
+                    if(pgd == target_pgd)                        
+                    {
+                        DECAF_printf("determine_if_network_recv:%d,%d\n",a0, accept_fd);
+                        handle_recv = 1;
+                        return 1;//goto skip_to_pos;
+
+                    }
                 }
             }
         }
@@ -2376,6 +2388,8 @@ int determine_if_network_recv(int program_id, CPUState *cpu, target_ulong sys_ca
 //#endif //AUTO_FIND_FORK_PC
     return 0;
 }
+
+
 int specify_fork_pc(CPUState *cpu)
 {
 

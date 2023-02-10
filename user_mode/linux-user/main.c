@@ -1265,11 +1265,11 @@ void exit_func(int syscall_num, int program_id)
             //add for 161161 firmware
             if(!strcmp(feed_type, "FEED_HTTP"))
             {
-                if(last_syscall == 142)
-                {
-                    last_syscall = 0;
+                // if(last_syscall == 142)
+                // {
+                    last_syscall = 0;               // Every time execution meets a select, it exits...
                     normal_exit(syscall_num); 
-                }
+                // }
             }
             else if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
             {
@@ -1286,6 +1286,12 @@ void exit_func(int syscall_num, int program_id)
                 }
                 normal_exit(syscall_num);
             }
+        }
+        else if (syscall_num == 3){     // For firmware DAP-2330_1.01
+            if(!strcmp(feed_type, "FEED_HTTP"))
+            {
+                normal_exit(syscall_num); 
+            }            
         }
         else if(syscall_num == 188)
         {

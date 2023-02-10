@@ -238,7 +238,7 @@ start()
             echo -e "\033[33m[*]\033[0m Emulation Log -> ${WORK_DIR}/run_emulation.log \n"
             
             # First I start qemu-system mode of the firmware and put it in background
-            sudo -E ./run_firmafl.sh -f ${BRAND} $FIRMWARE 2>&1 > ${WORK_DIR}/run_emulation.log &
+            sudo -E ./run.sh -f ${BRAND} $FIRMWARE 2>&1 > ${WORK_DIR}/run_emulation.log &
             pid=$!
             echo -e "\033[33m[*]\033[0m Let's wait 60 seconds...\n"
             sleep 60
