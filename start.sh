@@ -82,8 +82,8 @@ auto_find_brand() {
 
 # Cleanup Process and interfaces
 cleanup() {
-    sudo umount FirmAE/${WORK_DIR}/dev/null;
-    sudo umount FirmAE/${WORK_DIR}/dev/urandom;
+    sudo umount FirmAE/${WORK_DIR}/dev/null 2>&1 > /dev/null | true;
+    sudo umount FirmAE/${WORK_DIR}/dev/urandom 2>&1 > /dev/null | true;
 
     echo -e "\033[33m[*]\033[0m Start Exiting Procedure.."
     echo -e "\033[33m[+]\033[0m Killing Qemu if active"
@@ -155,13 +155,6 @@ start()
 
     cleanup
 
-    # Bind mount to /dev/null and /dev/urandom
-    mkdir ${WORK_DIR}/dev 2>&1 > /dev/null;
-    touch ${WORK_DIR}/dev/null 2>&1 > /dev/null;
-    mount --bind /dev/null ${WORK_DIR}/dev/null;
-    touch ${WORK_DIR}/dev/urandom 2>&1 > /dev/null;
-    mount --bind /dev/urandom ${WORK_DIR}/dev/urandom;
-
     if [ ${OPTION} = "-r" ]; then
         #export CALLSTACK_TRACING=1;
         export DEBUG=1;    # Uncomment if you want debug logs.
@@ -223,6 +216,14 @@ start()
         export FUZZ=1;
         #export CALLSTACK_TRACING=1;
         export DEBUG=1;    # Uncomment if you want debug logs.
+        
+        # Bind mount to /dev/null and /dev/urandom
+        mkdir ${WORK_DIR}/dev 2>&1 > /dev/null | true;
+        touch ${WORK_DIR}/dev/null 2>&1 > /dev/null | true;
+        mount --bind /dev/null ${WORK_DIR}/dev/null 2>&1 > /dev/null | true;
+        touch ${WORK_DIR}/dev/urandom 2>&1 > /dev/null | true;
+        mount --bind /dev/urandom ${WORK_DIR}/dev/urandom 2>&1 > /dev/null | true;
+        
         if [ ${OPTION} = "-nf" ]; then
             echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: NEW"
             export FUZZ_APPROACH=1;
