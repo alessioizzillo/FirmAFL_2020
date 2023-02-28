@@ -119,6 +119,48 @@ cleanup_exit() {
 
 trap cleanup_exit EXIT
 
+
+function parse_envs {
+    image_id=$1
+    type_name=$2
+    filename="args_file/${type_name}/${image_id}_${type_name}"
+    res=0
+    [ -e "$filename" ] && res=1
+    if [ "$res" -eq 0 ]; then
+        return 0
+    fi
+    text=$(sed -n '2p' "$filename")
+    arr_env=($(echo "$text" | tr "^" "\n"))
+    env_list_text=""
+    for (( j=0; j<${#arr_env[@]}-1; j++ )); do
+        env_list_text="${env_list_text} -E $(arg_encode "${arr_env[j]}")"
+    done
+    echo "$env_list_text"
+}
+
+function parse_args {
+    image_id=$1
+    type_name=$2
+    filename="args_file/${type_name}/${image_id}_${type_name}"
+    res=0
+    [ -e "$filename" ] && res=1
+    if [ "$res" -eq 0 ]; then
+        return 0
+    fi
+    text=$(head -n 1 "$filename")
+    arr=($(echo "$text" | tr "^" "\n"))
+    arg_list_text=""
+    for (( i=1; i<${#arr[@]}; i++ )); do
+        arg_list_text="${arg_list_text} $(arg_encode "${arr[i]}")"
+    done
+    echo "$arg_list_text"
+}
+
+function arg_encode {
+    echo "$1" | sed 's/ /\\ /g'
+}
+
+
 start()
 {
     export FUZZ=0;
@@ -138,7 +180,7 @@ start()
 
     IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
     if [[ ${IID} = "" ]] || [[ ! -d scratch/${IID} ]]; then
-        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-e" ] || [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]  || [ ${OPTION} = "-t" ]; then
+        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-e1" ] || [ ${OPTION} = "-e2" ] || [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]  || [ ${OPTION} = "-t" ]; then
             echo -e "\033[32m[+]\033[0m\033[32m[+]\033[0m FirmAE: Creating Firmware Scratch Image"
             sudo ./run.sh -c ${BRAND} ${FIRMWARE}
             IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
@@ -171,7 +213,7 @@ start()
             return
         fi
 
-    elif [ ${OPTION} = "-e" ]; then
+    elif [ ${OPTION} = "-e1" ]; then
         #export CALLSTACK_TRACING=1;
         export DEBUG=1;    # Uncomment if you want debug logs.
 
@@ -186,6 +228,88 @@ start()
             echo "WEB and PING ARE FALSE"
             return
         fi
+
+    elif [ ${OPTION} = "-e2" ]; then
+        # if [ ${OPTION} = "-nf" ]; then
+        #     echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: NEW"
+        #     export FUZZ_APPROACH=1;
+        # else
+        #     echo -e "\033[33m[*]\033[0m Chosen Fuzzing Approach: ORIGINAL"
+        # fi
+
+        # First check if the equafl image exists
+        if [ -d ${WORK_DIR}/equafl_image ]; then
+            echo ""
+            echo -e "\033[32m[+]\033[0m All set..Now we can start the fuzzer"
+
+            # Enter to the WorkFolder to start the fuzzer
+            cd ${WORK_DIR}
+
+            if [[ -f "fuzz_line" ]]; then
+                AFL=$(cat fuzz_line)
+            else
+                AFL="./afl-fuzz -m none -t 800000+ -Q -i inputs -o outputs -x keywords"
+            fi
+
+            if [[ -f "service" ]]; then
+                TARGET_PROGRAM_PATH=$(cat service)
+            else
+                echo -e "\033[31m[-]\033[0m The target program has not been specified!"
+                exit 
+            fi
+
+            cp afl-fuzz equafl_image > /dev/null 2>&1 || true;
+            cp afl-qemu-trace_equafl equafl_image/afl-qemu-trace > /dev/null 2>&1 || true;
+            cp -R inputs equafl_image > /dev/null 2>&1 || true;
+            cp -R keywords equafl_image > /dev/null 2>&1 || true;
+
+            echo -e "\033[32m[->]\033[0m $AFL $TARGET_PROGRAM_PATH"
+            sleep 3
+  
+            # The fuzzer cannot start with an already existing /outputs folder so we removes it
+            if [ -e equafl_image/outputs ]; then
+                sudo rm -r equafl_image/outputs;
+            fi
+
+            # Some configuration lines of the fuzzer
+            echo core | sudo tee /proc/sys/kernel/core_pattern;
+            export AFL_SKIP_CPUFREQ=1;
+
+            TARGET_PROGRAM_PATH=${TARGET_PROGRAM_PATH%%[[:space:]]*}
+            TARGET_PROGRAM_PATH="${TARGET_PROGRAM_PATH:1}"
+
+            mkdir -p equafl_image/bin
+            mkdir -p equafl_image/lib
+            mkdir -p equafl_image/lib64
+            cp -v /bin/bash bin
+	        list="$(ldd /bin/bash | egrep -o '/lib.*\.[0-9]')" && for i in $list; do cp -v --parents "$i" "equafl_image"; done
+
+            cd equafl_image
+
+            echo "image_id=${IID}" > USER_config
+
+            read arg_list_text < <(parse_args "$IID" "$(basename "$TARGET_PROGRAM_PATH")")
+            read env_list_text < <(parse_envs "$IID" "$(basename "$TARGET_PROGRAM_PATH")")
+
+            # Check arg_list_text
+            if [ -z "$arg_list_text" ]; then
+                filename="args_file/$type_name/$IID_$type_name"
+                echo "Arg file does not exist: $filename"
+                exit 1
+            fi
+
+            gdb --args chroot . ${AFL} ${TARGET_PROGRAM_PATH} ${env_list_text} ${arg_list_text} @@
+            cd ..
+
+            # Exiting the WorkFolder
+            cd -
+
+        else
+            echo "Run the tool with -e1 first to perform the EQUAFL observation phase"
+            return
+        fi
+
+        echo -e "\033[32m[+]\033[0m\033[32m[+]\033[0m Ending Fuzzing Session - Check the result on the outputs directory!"
     
     elif [ ${OPTION} = "-t" ]; then
         #export CALLSTACK_TRACING=1;

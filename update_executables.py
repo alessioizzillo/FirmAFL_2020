@@ -33,7 +33,8 @@ def main():
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips_equafl")
 			cmd.append("sudo cp qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips_equafl "+ firm_dir+name+"/")
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips_equafl qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips")
-			
+			cmd.append("sudo cp user_mode_equafl/mips-linux-user/qemu-mips "+ firm_dir+name+"/afl-qemu-trace_equafl")
+
 		elif ("mipsel" in firm_architecture):
 			cmd.append("sudo cp AFL/afl-fuzz "+ firm_dir+name+"/")
 
@@ -45,6 +46,7 @@ def main():
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel_equafl")
 			cmd.append("sudo cp qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel_equafl "+ firm_dir+name+"/")
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel_equafl qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel")
+			cmd.append("sudo cp user_mode_equafl/mipsel-linux-user/qemu-mipsel "+ firm_dir+name+"/afl-qemu-trace_equafl")
 
 		else:
 			cmd.append("sudo cp AFL/afl-fuzz "+ firm_dir+name+"/")
@@ -57,15 +59,7 @@ def main():
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm_equafl")
 			cmd.append("sudo cp qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm_equafl "+ firm_dir+name+"/")
 			cmd.append("sudo mv qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm_equafl qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm")
-
-	#sudo cp qemu_mode/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips FirmAE/scratch/id/
-	#sudo cp qemu_mode/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel FirmAE/scratch/id/
-	#sudo cp qemu_mode/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm FirmAE/scratch/id/
-	#sudo cp user_mode/mipsel-linux-user/qemu-mipsel FirmAE/scratch/id/afl-qemu-trace
-	#sudo cp user_mode/mips-linux-user/qemu-mips FirmAE/scratch/id/afl-qemu-trace
-	#sudo cp user_mode/mips-linux-user/qemu-mips FirmAE/scratch/id/afl-qemu-trace
-	#sudo cp user_mode/arm-linux-user/qemu-arm FirmAE/scratch/id/afl-qemu-trace
-
+			cmd.append("sudo cp user_mode_equafl/arm-linux-user/qemu-arm "+ firm_dir+name+"/afl-qemu-trace_equafl")
 	
 	for i in range(0, len(cmd)):
 		os.system(cmd[i])
