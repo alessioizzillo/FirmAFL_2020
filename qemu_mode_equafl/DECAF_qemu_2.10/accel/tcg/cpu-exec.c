@@ -2922,6 +2922,48 @@ int syscall_start_ana(CPUState *cpu)
         memset(filename, 0, 100);
         int rret = DECAF_read_mem(cpu, a0, 100, filename);
         //printf("pgd:%x, execve:%s\n", pgd, filename);
+
+        if (strstr(filename, program_analysis)){     // EQUAFL-FIX
+            int mmu_idx = cpu_mmu_index(env, true); //zyw
+            int argv_addr, envp_addr;
+
+            char command[100];
+            char filename[50];
+            sprintf(command, "mkdir -p args_file/%s", program_analysis);
+            sprintf(filename, "args_file/%s/%d_%s", program_analysis, program_id, program_analysis);
+            system(command);
+            FILE *fp = fopen(filename, "w+");
+
+            int i = 0;
+            char str[500];
+
+            while(1){
+                memset(str,0,500);
+                DECAF_read_ptr(cpu, a1+i, &argv_addr);
+                if (!argv_addr)
+                    break;
+                tlb_fill(cpu, argv_addr, 0, mmu_idx, 0);
+                DECAF_read_mem(cpu, argv_addr, 499, str);
+                fprintf(fp, "%s^", str);
+                i+=4;
+            }
+
+            fprintf(fp, "\n");
+            i = 0;
+
+            while(1){
+                memset(str,0,500);
+                DECAF_read_ptr(cpu, a2+i, &envp_addr);
+                if (!envp_addr)
+                    break;
+                tlb_fill(cpu, envp_addr, 0, mmu_idx, 0);
+                DECAF_read_mem(cpu, envp_addr, 499, str);
+                fprintf(fp, "%s^", str);
+                i+=4;
+            }
+
+            fclose(fp); 
+        }
     }
     if(syscall_num == 4042) //pipe
     {
