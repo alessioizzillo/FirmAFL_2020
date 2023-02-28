@@ -50,6 +50,9 @@ qemu_all:
 afl-qemu-system-trace:
 	./build_qemu_support.sh qemu
 
+afl-qemu-system-trace-equafl:
+	./build_qemu_support.sh qemu_equafl
+
 afl-qemu-trace :
 	./build_qemu_support.sh user
 

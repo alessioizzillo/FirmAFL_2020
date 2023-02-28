@@ -138,7 +138,7 @@ start()
 
     IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
     if [[ ${IID} = "" ]] || [[ ! -d scratch/${IID} ]]; then
-        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]  || [ ${OPTION} = "-t" ]; then
+        if [ ${OPTION} = "-r" ] || [ ${OPTION} = "-e" ] || [ ${OPTION} = "-f" ] || [ ${OPTION} = "-nf" ]  || [ ${OPTION} = "-t" ]; then
             echo -e "\033[32m[+]\033[0m\033[32m[+]\033[0m FirmAE: Creating Firmware Scratch Image"
             sudo ./run.sh -c ${BRAND} ${FIRMWARE}
             IID=`./scripts/util.py get_iid $FIRMWARE $PSQL_IP`
@@ -161,6 +161,22 @@ start()
 
         if (egrep -sqi "true" ${WORK_DIR}/web); then
             sudo -E ./run.sh -r ${BRAND} $FIRMWARE
+        elif (! egrep -sqi "false" ping); then
+            # Case where PING is TRUE, WEB is FALSE. Type of fuzzing?
+            echo "WEB is FALSE and PING IS TRUE" 
+            return
+        else   
+            # Case where both WEB and PING are False. Type of fuzzing?
+            echo "WEB and PING ARE FALSE"
+            return
+        fi
+
+    elif [ ${OPTION} = "-e" ]; then
+        #export CALLSTACK_TRACING=1;
+        export DEBUG=1;    # Uncomment if you want debug logs.
+
+        if (egrep -sqi "true" ${WORK_DIR}/web); then
+            sudo -E ./run.sh -e ${BRAND} $FIRMWARE
         elif (! egrep -sqi "false" ping); then
             # Case where PING is TRUE, WEB is FALSE. Type of fuzzing?
             echo "WEB is FALSE and PING IS TRUE" 

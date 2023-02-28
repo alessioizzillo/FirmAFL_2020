@@ -153,6 +153,8 @@ int write_addr(uintptr_t ori_addr, uintptr_t addr);
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
 
+target_ulong handle_addr;     // EQUAFL-FIX
+
 #ifdef MEM_MAPPING
 typedef struct MISSING_PAGE{
     target_ulong addr;
@@ -845,9 +847,9 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
 
     //VMI_find_process_by_cr3_c(params->cp.cr3, procname, 64, &pid);
     VMI_find_process_by_cr3_all(params->cp.cr3, procname, 64, &pid, &par_pid);
-#ifdef FILE_ANALYSIS
+
     printf("new process:%s,%x\n", procname, params->cp.cr3);
-#endif
+
     if (pid == (uint32_t)(-1))
     {
         return;
@@ -859,23 +861,14 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     //printf("new process:%s, pgd:%x,%x, pid:%d\n", procname, par_cr3, params->cp.cr3, pid);
     child_operation(par_cr3, params->cp.cr3, par_proc_name, procname);
 
-    uint32_t old_cr3 = params->cp.old_cr3;
-    if(old_cr3 != 0)
-    {
-        //printf("!!!!!!!!!!!!!!!!!!!!!!!!!!related cr3:%x,%x\n", old_cr3, params->cp.cr3);
-        child_operation(old_cr3, params->cp.cr3, "old process", procname);
-    }
-
     if(strstr(procname,program_analysis) &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL && strstr(par_proc_name, "procd") == NULL)// && strstr(par_proc_name, "uhttpd.sh") == NULL) //uhttpd.sh 108073
     {
         DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cr3:%x, parent:%s\n",procname, index, pid, par_pid, params->cp.cr3, par_proc_name);
-#ifdef FILE_ANALYSIS
         FILE * flag_fp = fopen("file_generate_success", "w+");
         fclose(flag_fp);
         printf("file generate success\n");
         close_all_files();
         exit(0);
-#endif       
     }
   
 }
@@ -2163,6 +2156,7 @@ int start_fork(CPUState *cpu, target_ulong pc)
             fprintf(fp ,"%x\n", env->CP0_Status);
             fprintf(fp ,"%x\n", env->CP0_Cause);
             fprintf(fp ,"%x\n", env->CP0_EPC);
+            target_ulong stack = env->active_tc.gpr[29];     // EQUAFL-FIX 
             printf("user pc:%x, stack:%x,  qemu pid:%x\n", env->active_tc.PC, stack, getpid());
 #elif defined(TARGET_ARM)
             for(int i=0;i<16;i++) {
@@ -2213,6 +2207,7 @@ int start_fork(CPUState *cpu, target_ulong pc)
 }
 
 
+#ifdef FUZZ     // EQUAFL-FIX
 int feed_input_helper(CPUState *cpu, target_ulong pc)
 {
     if(start_fork_pc != 0 && pc == start_fork_pc && feed_times == 0)
@@ -2242,43 +2237,6 @@ int feed_input_helper(CPUState *cpu, target_ulong pc)
         }
     }
     return 0;
-}
-
-void handle_accept_after(CPUState *cpu, target_ulong pc)
-{
-    CPUArchState *env = cpu->env_ptr;
-#ifdef TARGET_ARM
-    int exception_num = 2;
-    int accept_syscall = 285;
-    target_ulong ret = env->regs[0];
-#elif defined(TARGET_MIPS)
-    int exception_num = 17;
-    int accept_syscall = 4168;
-    target_ulong ret = env->active_tc.gpr[2];
-#endif
-    if(config_pc==0)
-    {
-        if(start_fork_pc == 0 && pc < 0x80000000 && into_syscall == accept_syscall) // after accept
-        {
-            target_ulong pgd = DECAF_getPGD(cpu);
-            if(pgd == httpd_pgd) {
-
-                printf("handle_accept_after\n");
-                if(into_syscall == accept_syscall)
-                {
-                    accept_times++;
-                    printf("_______{fd:%d\n", ret);
-                    if(accept_times == fork_accept_times)
-                    {
-                        accept_fd = ret;
-                        printf("_________accept fd:%d\n", accept_fd);
-                    } 
-                }
-                into_syscall = 0;
-            }
-        }
-
-    }
 }
 
 int feed_input_times = 0;
@@ -2351,6 +2309,44 @@ int feed_input_to_program(int program_id, CPUState *cpu) //before recv
         return 1;//goto skip_to_pos;
     }
     return 0;
+}
+#endif
+
+void handle_accept_after(CPUState *cpu, target_ulong pc)     // EQUAFL-FIX (this function has been moved here)
+{
+    CPUArchState *env = cpu->env_ptr;
+#ifdef TARGET_ARM
+    int exception_num = 2;
+    int accept_syscall = 285;
+    target_ulong ret = env->regs[0];
+#elif defined(TARGET_MIPS)
+    int exception_num = 17;
+    int accept_syscall = 4168;
+    target_ulong ret = env->active_tc.gpr[2];
+#endif
+    if(config_pc==0)
+    {
+        if(start_fork_pc == 0 && pc < 0x80000000 && into_syscall == accept_syscall) // after accept
+        {
+            target_ulong pgd = DECAF_getPGD(cpu);
+            if(pgd == httpd_pgd) {
+
+                printf("handle_accept_after\n");
+                if(into_syscall == accept_syscall)
+                {
+                    accept_times++;
+                    printf("_______{fd:%d\n", ret);
+                    if(accept_times == fork_accept_times)
+                    {
+                        accept_fd = ret;
+                        printf("_________accept fd:%d\n", accept_fd);
+                    } 
+                }
+                into_syscall = 0;
+            }
+        }
+
+    }
 }
 
 //zyw analyze config file
@@ -2558,7 +2554,7 @@ void close_all_files()
         close(curr->real_fd);
         printf("close real fd:%d\n", curr->real_fd);
         free(curr); 
-        curr = NULL;
+        //curr = NULL;     // EQUAFL-FIX
     }
     printf("close all files\n");
 }
@@ -2593,63 +2589,6 @@ void delete_fd(int pgd, int file_fd)
 }
 
 
-#include <syscall_new/syscall_defs.h>
-/* Translation table for bitmasks... */
-typedef struct bitmask_transtbl {
-    unsigned int target_mask;
-    unsigned int target_bits;
-    unsigned int host_mask;
-    unsigned int host_bits;
-} bitmask_transtbl;
-
-static bitmask_transtbl fcntl_flags_tbl[] = {
-  { TARGET_O_ACCMODE,   TARGET_O_WRONLY,    O_ACCMODE,   O_WRONLY,    },
-  { TARGET_O_ACCMODE,   TARGET_O_RDWR,      O_ACCMODE,   O_RDWR,      },
-  { TARGET_O_CREAT,     TARGET_O_CREAT,     O_CREAT,     O_CREAT,     },
-  { TARGET_O_EXCL,      TARGET_O_EXCL,      O_EXCL,      O_EXCL,      },
-  { TARGET_O_NOCTTY,    TARGET_O_NOCTTY,    O_NOCTTY,    O_NOCTTY,    },
-  { TARGET_O_TRUNC,     TARGET_O_TRUNC,     O_TRUNC,     O_TRUNC,     },
-  { TARGET_O_APPEND,    TARGET_O_APPEND,    O_APPEND,    O_APPEND,    },
-  { TARGET_O_NONBLOCK,  TARGET_O_NONBLOCK,  O_NONBLOCK,  O_NONBLOCK,  },
-  { TARGET_O_SYNC,      TARGET_O_DSYNC,     O_SYNC,      O_DSYNC,     },
-  { TARGET_O_SYNC,      TARGET_O_SYNC,      O_SYNC,      O_SYNC,      },
-  { TARGET_FASYNC,      TARGET_FASYNC,      FASYNC,      FASYNC,      },
-  { TARGET_O_DIRECTORY, TARGET_O_DIRECTORY, O_DIRECTORY, O_DIRECTORY, },
-  { TARGET_O_NOFOLLOW,  TARGET_O_NOFOLLOW,  O_NOFOLLOW,  O_NOFOLLOW,  },
-#if defined(O_DIRECT)
-  { TARGET_O_DIRECT,    TARGET_O_DIRECT,    O_DIRECT,    O_DIRECT,    },
-#endif
-#if defined(O_NOATIME)
-  { TARGET_O_NOATIME,   TARGET_O_NOATIME,   O_NOATIME,   O_NOATIME    },
-#endif
-#if defined(O_CLOEXEC)
-  { TARGET_O_CLOEXEC,   TARGET_O_CLOEXEC,   O_CLOEXEC,   O_CLOEXEC    },
-#endif
-#if defined(O_PATH)
-  { TARGET_O_PATH,      TARGET_O_PATH,      O_PATH,      O_PATH       },
-#endif
-  /* Don't terminate the list prematurely on 64-bit host+guest.  */
-#if TARGET_O_LARGEFILE != 0 || O_LARGEFILE != 0
-  { TARGET_O_LARGEFILE, TARGET_O_LARGEFILE, O_LARGEFILE, O_LARGEFILE, },
-#endif
-  { 0, 0, 0, 0 }
-};
-
-
-unsigned int target_to_host_bitmask(unsigned int target_mask,
-                                    const bitmask_transtbl * trans_tbl)
-{
-    const bitmask_transtbl *btp;
-    unsigned int host_mask = 0;
-
-    for (btp = trans_tbl; btp->target_mask && btp->host_mask; btp++) {
-        if ((target_mask & btp->target_mask) == btp->target_bits) {
-            host_mask |= btp->host_bits;
-        }
-    }
-    return host_mask;
-}
-
 void dup_operation(int pgd, int old_fd, int new_fd)
 {
     if(print_debug) printf("%x dup operation:%d,%d\n", pgd, old_fd, new_fd);
@@ -2664,16 +2603,14 @@ void open_operation(CPUState *cpu, int pgd, int file_fd, int err, char *filename
     char tmp_fd_map[32];
     memset(tmp_fd_map,0, 32);
     add_fdmap(tmp_fd_map, file_fd);
-   // int real_fd = open(filename, O_RDWR | O_CREAT, 00700);
+    int real_fd = open(filename, O_RDWR | O_CREAT, 00700);
     //openat( AT_FDCWD, filename, target_to_host_bitmask(flags, 0),mode);
-    int real_fd = open(filename, target_to_host_bitmask(flags, fcntl_flags_tbl) ,mode);
-    if(real_fd == -1) printf("@@@@@@@@@@@@@open %s flags: %o:%o, mode:%o, open_result:%d,%o, error:%d\n", filename,flags,target_to_host_bitmask(flags, fcntl_flags_tbl), mode, real_fd, file_fd, err);
+    //int real_fd = open(filename, target_to_host_bitmask(flags, fcntl_flags_tbl) ,mode);
+    if(real_fd == -1) printf("@@@@@@@@@@@@@open %s flags: %o:%o, mode:%o, open_result:%d,%o, error:%d\n", filename, flags, O_RDWR|O_CREAT, mode, real_fd, file_fd, err);
     if(real_fd!=-1)
     {
         insert_asso_file(pgd, tmp_fd_map, filename, real_fd, true);  
     }
-    
-
 }
 
 void write_operation(int pgd, int file_fd, char *buf, int len)
@@ -2698,6 +2635,8 @@ void close_operation(int pgd, int file_fd)
         delete_fd(pgd, file_fd);
     }
 }
+
+#include "shared/EQUAFL_observation.h"      // EQUAFL-FIX
 
 void child_operation(int pgd, int new_pgd, char *name, char *new_name)
 {
@@ -3317,15 +3256,13 @@ int cpu_exec(CPUState *cpu)
 
     CPUArchState * env = cpu->env_ptr;
     //if(cpu->exception_index == exception_num && into_syscall == 0)
-#ifdef FILE_ANALYSIS
+
     if(cpu->exception_index == exception_num )
     {
-     
         int rret = syscall_start_ana(cpu); 
         if(rret)
             record_current_state(cpu);
-    } 
-#endif
+    }
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
@@ -3356,7 +3293,6 @@ skip_to_pos:
 
 #endif
 
-#ifdef FILE_ANALYSIS
 #ifdef TARGET_MIPS
             if(pc < 0x80000000)
 #elif defined(TARGET_ARM)
@@ -3372,7 +3308,7 @@ skip_to_pos:
                 }
 
             }
-#endif      
+
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
             /* Try to align the host and virtual clocks

@@ -80,6 +80,34 @@ if [ "$ARGS" = "qemu" ] || [ "$ARGS" = "all" ]; then
 
 fi
 
+if [ "$ARGS" = "qemu_equafl" ] || [ "$ARGS" = "all" ]; then
+
+    echo ""
+    echo -e "\033[33m[*]\033[0m Starting QEMU System Mode (EQUAFL) compilation..!"
+
+    echo "================================================="
+    echo "QEMU System Mode Build script"
+    echo "================================================="
+    echo
+
+    echo -e "\033[33m[*]\033[0m Configuring QEMU (system mode)..."
+
+    cd qemu_mode_equafl/DECAF_qemu_2.10 || exit 1
+
+    ./configure --target-list=mipsel-softmmu,mips-softmmu,arm-softmmu --disable-werror --python=/usr/bin/python
+
+    echo -e "\033[32m[+]\033[0m Configuration complete."
+
+    echo -e "\033[33m[*]\033[0m Attempting to build QEMU (fingers crossed!)...this could take some time"
+
+    make 2>&1 >qemu_system_make.log || exit 1
+
+    echo -e "\033[32m[+]\033[0m Building process successful!"
+
+    cd ../..
+
+fi
+
 echo ""
 echo -e "\033[32m[+]\033[0m All set, you can now (hopefully) use the -Q mode in afl-fuzz and qemu-system mode in qemu-mode"
 

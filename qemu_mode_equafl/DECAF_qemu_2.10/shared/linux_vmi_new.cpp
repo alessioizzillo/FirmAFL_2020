@@ -665,14 +665,10 @@ int find_linux(CPUState *env, uintptr_t insn_handle)
 void linux_vmi_init()
 { 	
 	DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_exec_connector, OCB_CONST);
-	//DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
+    DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_fork_connector, OCB_CONST);     // EQUAFL-FIX
+	DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
 	DECAF_registerOptimizedBlockBeginCallback(&proc_end_callback, NULL, OFFSET_PROFILE.proc_exit_connector, OCB_CONST);
-    
-    char *env_var_callstack_tracing = getenv("CALLSTACK_TRACING");
-    if (env_var_callstack_tracing && !strcmp(env_var_callstack_tracing, "1")){
-        DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_fork_connector, OCB_CONST);
-        DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
-    }
+    DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
 
 	process *kernel_proc = new process();
 	kernel_proc->cr3 = 0;
@@ -781,9 +777,9 @@ gpa_t mips_get_cur_pgd(CPUState *env){
 }
 #endif
 
-//zyw
-extern target_ulong code_start;
-extern target_ulong code_end;
+// //zyw
+// extern target_ulong code_start;
+// extern target_ulong code_end;
 
 void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
 {
@@ -837,11 +833,11 @@ void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
         fprintf(fp, "%x:", vma_vm_start);
         fprintf(fp, "%x:", vma_vm_end);
         fprintf(fp, "%x:", vma_flags);
-        if(count == 1)
-        {
-            code_start = vma_vm_start;
-            code_end = vma_vm_end;
-        }
+        // if(count == 1)
+        // {
+        //     code_start = vma_vm_start;
+        //     code_end = vma_vm_end;
+        // }
 
 //
          

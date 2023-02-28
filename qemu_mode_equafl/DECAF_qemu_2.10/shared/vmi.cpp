@@ -319,6 +319,8 @@ int VMI_is_MoudleExtract_Required()
 	return 1;
 }
 
+#include "EQUAFL_observation.h"     // EQUAFL-FIX
+
 int VMI_create_process(process *proc)
 {
 	//printf("In VMI_create_process\n");
@@ -334,8 +336,8 @@ int VMI_create_process(process *proc)
     if (iter != process_pid_map.end()){
     	// Found an existing process with the same pid
     	// We force to remove that one.
-    //	monitor_printf(cur_mon, "remove process pid %d", proc->pid);
-
+    	// monitor_printf(cur_mon, "remove process pid %d", proc->pid);
+        child_operation(iter->second->cr3, proc->cr3, "old process", proc->name);     // EQUAFL-FIX
     	VMI_remove_process(proc->pid);
     }
 
@@ -344,9 +346,8 @@ int VMI_create_process(process *proc)
     if (iter2 != process_map.end()) {
     	// Found an existing process with the same CR3
     	// We force to remove that process
-    //	monitor_printf(cur_mon, "removing due to cr3 0x%08x\n", proc->cr3);
-    		VMI_remove_process(iter2->second->pid);
-
+    	// monitor_printf(cur_mon, "removing due to cr3 0x%08x\n", proc->cr3);
+    	VMI_remove_process(iter2->second->pid);
     }
 
    	process_pid_map[proc->pid] = proc;

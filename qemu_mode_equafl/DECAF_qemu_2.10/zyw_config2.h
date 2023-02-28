@@ -101,7 +101,7 @@ int print_loop_times = 1;
 int print_loop_count = 0;
 
 
-int target_pgd;
+int httpd_pgd;
 int afl_user_fork = 0;
 
 

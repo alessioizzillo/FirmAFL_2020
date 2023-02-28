@@ -75,14 +75,17 @@ dst_input = "FirmAE/scratch/%s/inputs/" %firm_id
 # Executables QEMU system mode and user mode
 if "mipseb" in firm_arch:   
 	sys_src = "qemu_mode/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips"
+	equafl_sys_src = "qemu_mode_equafl/DECAF_qemu_2.10/mips-softmmu/qemu-system-mips"
 	user_src = "user_mode/mips-linux-user/qemu-mips"
 	kernel_src = "FirmAE/binaries/vmlinux.mipseb_DECAF"
 elif "mipsel" in firm_arch:
 	sys_src = "qemu_mode/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel"
+	equafl_sys_src = "qemu_mode_equafl/DECAF_qemu_2.10/mipsel-softmmu/qemu-system-mipsel"
 	user_src = "user_mode/mipsel-linux-user/qemu-mipsel"
 	kernel_src = "FirmAE/binaries/vmlinux.mipsel_DECAF"
 else:
 	sys_src = "qemu_mode/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm"
+	equafl_sys_src = "qemu_mode_equafl/DECAF_qemu_2.10/arm-softmmu/qemu-system-arm"
 	user_src = "user_mode/arm-linux-user/qemu-arm" 
 	kernel_src = "FirmAE/binaries/zImage.armel_DECAF"
 
@@ -117,7 +120,8 @@ vgabios_bin = "qemu_mode/DECAF_qemu_2.10/pc-bios/vgabios-cirrus.bin"
 efi_bin =  "qemu_mode/DECAF_qemu_2.10/pc-bios/efi-e1000.rom"
 
 cmd.append("cp %s %s" %(seed_src, dst_input)) 
-cmd.append("cp %s %s" %(sys_src, dst)) 
+cmd.append("cp %s %s" %(sys_src, dst))
+cmd.append("mv %s %s_equafl && cp %s_equafl %s && mv %s_equafl %s" %(equafl_sys_src, equafl_sys_src, equafl_sys_src, dst, equafl_sys_src, equafl_sys_src)) 
 cmd.append("cp %s %safl-qemu-trace" %(user_src, dst)) 
 cmd.append("cp %s %s" %(kernel_src, dst))
 cmd.append("cp %s %s" %(procinfo_src, dst))

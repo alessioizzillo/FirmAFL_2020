@@ -55,6 +55,13 @@ else
 fi
 
 QEMU=./`get_qemu ${ARCHEND}`
+
+if (echo ${RUN_MODE} | grep -q "equafl"); then
+    echo -e "Using EQUAFL qemu"
+    QEMU+=_equafl
+    echo -e ""
+fi
+
 KERNEL=`get_kernel ${ARCHEND}`
 
 if (echo ${RUN_MODE} | grep -q "firmafl\|equafl"); then
@@ -93,15 +100,35 @@ echo -e "Starting emulation of firmware..."
 echo -e ""
 
 if (echo ${RUN_MODE} | grep -q "equafl"); then
-    echo -e "Changing root directory..."
-    echo -e ""
-    chroot . %(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
+    if [ -d "equafl_image" ]; then
+        rm -r equafl_image
+    fi
+    
+    mkdir equafl_image
+
+    # Extract firmware filesystem
+    tar -xvf ../../images/${IID}.tar.gz -C equafl_image > /dev/null 2>&1 || true;
+
+    cp ${QEMU} equafl_image/
+    cp ${KERNEL} equafl_image/
+    cp ${IMAGE} equafl_image/
+    cp FirmAFL_config equafl_image/
+    cp procinfo.ini equafl_image/
+    cp vgabios-cirrus.bin equafl_image/
+    cp efi-e1000.rom equafl_image/
+
+    cd equafl_image
+
+    %(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
         %(QEMU_DISK)s -append "root=${QEMU_ROOTFS} console=ttyS0 nandsim.parts=64,64,64,64,64,64,64,64,64,64 %(QEMU_INIT)s rw debug ignore_loglevel print-fatal-signals=1 FIRMAE_NET=${FIRMAE_NET} FIRMAE_NVRAM=${FIRMAE_NVRAM} FIRMAE_KERNEL=${FIRMAE_KERNEL} FIRMAE_ETC=${FIRMAE_ETC} ${QEMU_DEBUG}" \\
         -serial file:qemu.final.serial.log \\
         -serial unix:/tmp/qemu.${IID}.S1,server,nowait \\
         -monitor unix:/tmp/qemu.${IID},server,nowait \\
         -display none \\
         %(QEMU_NETWORK)s | true
+    
+    cd ..
+
 else
     %(QEMU_ENV_VARS)s  ${QEMU} ${QEMU_BOOT} -m 1024 -mem-prealloc -mem-path mem_file -M ${QEMU_MACHINE} -kernel ${KERNEL} \
         %(QEMU_DISK)s -append "root=${QEMU_ROOTFS} console=ttyS0 nandsim.parts=64,64,64,64,64,64,64,64,64,64 %(QEMU_INIT)s rw debug ignore_loglevel print-fatal-signals=1 FIRMAE_NET=${FIRMAE_NET} FIRMAE_NVRAM=${FIRMAE_NVRAM} FIRMAE_KERNEL=${FIRMAE_KERNEL} FIRMAE_ETC=${FIRMAE_ETC} ${QEMU_DEBUG}" \\
@@ -111,7 +138,8 @@ else
         -display none \\
         %(QEMU_NETWORK)s | true
 fi
-cd -
+
+cd ../../
 
 %(STOP_NET)s
 
