@@ -84,6 +84,8 @@ auto_find_brand() {
 cleanup() {
     sudo umount FirmAE/${WORK_DIR}/dev/null 2>&1 > /dev/null | true;
     sudo umount FirmAE/${WORK_DIR}/dev/urandom 2>&1 > /dev/null | true;
+    sudo umount FirmAE/${WORK_DIR}/equafl_image/dev/null 2>&1 > /dev/null | true;
+    sudo umount FirmAE/${WORK_DIR}/equafl_image/dev/urandom 2>&1 > /dev/null | true;
 
     echo -e "\033[33m[*]\033[0m Start Exiting Procedure.."
     echo -e "\033[33m[+]\033[0m Killing Qemu if active"
@@ -258,7 +260,7 @@ start()
                 exit 
             fi
 
-            cp afl-fuzz equafl_image > /dev/null 2>&1 || true;
+            cp afl-fuzz equafl_image/afl-fuzz > /dev/null 2>&1 || true;
             cp afl-qemu-trace_equafl equafl_image/afl-qemu-trace > /dev/null 2>&1 || true;
             cp -R inputs equafl_image > /dev/null 2>&1 || true;
             cp -R keywords equafl_image > /dev/null 2>&1 || true;
@@ -286,6 +288,11 @@ start()
 
             cd equafl_image
 
+            sudo touch dev/null
+            sudo mount --bind /dev/null dev/null 2>&1 > /dev/null | true;
+            sudo touch dev/urandom
+            sudo mount --bind /dev/urandom dev/urandom 2>&1 > /dev/null | true;
+
             echo "image_id=${IID}" > USER_config
 
             read arg_list_text < <(parse_args "$IID" "$(basename "$TARGET_PROGRAM_PATH")")
@@ -298,7 +305,7 @@ start()
                 exit 1
             fi
 
-            gdb --args chroot . ${AFL} ${TARGET_PROGRAM_PATH} ${env_list_text} ${arg_list_text} @@
+            chroot . ${AFL} ${TARGET_PROGRAM_PATH} ${env_list_text} ${arg_list_text} @@
             cd ..
 
             # Exiting the WorkFolder

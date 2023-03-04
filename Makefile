@@ -56,6 +56,9 @@ afl-qemu-system-trace-equafl:
 afl-qemu-trace :
 	./build_qemu_support.sh user
 
+afl-qemu-trace-equafl :
+	./build_qemu_support.sh user_equafl
+
 .NOTPARALLEL: 
 	$(MAKE) -C AFL publish
 

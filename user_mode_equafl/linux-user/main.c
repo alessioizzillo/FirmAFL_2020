@@ -47,7 +47,7 @@
 #include "trace/control.h"
 #include "glib-compat.h"
 
-int print_debug = 1;
+int print_debug = 0;
 
 char *exec_path;
 

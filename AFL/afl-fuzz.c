@@ -1994,6 +1994,44 @@ static void destroy_extras(void) {
 }
 
 
+char **change_argv(char **argv) {
+  int argc = 0;
+  char **new_argv = NULL;
+
+  while (argv[argc] != NULL) {
+    argc++;
+  }
+
+  new_argv = (char **) malloc(argc * sizeof(char *));
+  if (new_argv == NULL) {
+    perror("malloc");
+    exit(EXIT_FAILURE);
+  }
+
+  memset(new_argv, NULL, argc);
+
+  new_argv[0] = argv[0];
+
+  int i;
+  for (i = 3; i < argc; i+=2) {
+    if (!strcmp(argv[i], "-E")){
+      new_argv[i - 2] = argv[i];
+      new_argv[i - 1] = argv[i+1];
+    }
+    else
+      break;
+  }
+
+  new_argv[i - 2] = argv[1];
+  new_argv[i - 1] = argv[2];
+
+  for(; i < argc; i++)
+    new_argv[i] = argv[i];
+
+  return new_argv;
+}
+
+
 /* Spin up fork server (instrumented mode only). The idea is explained here:
 
    http://lcamtuf.blogspot.com/2014/10/fuzzing-binaries-without-execve.html
@@ -2114,7 +2152,8 @@ EXP_ST void init_forkserver(char** argv) {
                            "allocator_may_return_null=1:"
                            "msan_track_origins=0", 0);
 
-    execv(target_path, argv);
+    char **new_argv = change_argv(argv);
+    execv(target_path, new_argv);
 
     /* Use a distinctive bitmap signature to tell the parent about execv()
        falling through. */

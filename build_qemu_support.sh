@@ -52,6 +52,34 @@ if [ "$ARGS" = "user" ] || [ "$ARGS" = "all" ]; then
     cd ..
 fi
 
+if [ "$ARGS" = "user_equafl" ] || [ "$ARGS" = "all" ]; then
+
+    echo ""
+    echo -e "\033[33m[*]\033[0m Starting QEMU User Mode compilation..!"
+
+    echo "=========================================================="
+    echo "AFL binary-only instrumentation QEMU (EQUAFL) build script"
+    echo "=========================================================="
+    echo
+
+    echo -e "\033[33m[*]\033[0m Configuring QEMU (user mode)..."
+    echo ""
+
+    cd user_mode_equafl || exit 1
+
+    ./configure --target-list=mipsel-linux-user,mips-linux-user,arm-linux-user --static --disable-werror --python=/usr/bin/python
+
+    echo -e "\033[32m[+]\033[0m Configuration complete."
+
+    echo -e "\033[33m[*]\033[0m Attempting to build QEMU (fingers crossed!)....this could take some time"
+
+    make 2>&1 >equafl_qemu_user_make.log || exit 1
+
+    echo -e "\033[32m[+]\033[0m Building process successful!"
+
+    cd ..
+fi
+
 if [ "$ARGS" = "qemu" ] || [ "$ARGS" = "all" ]; then
 
     echo ""
